@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.text();
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = stripe!.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       
       try {
         // セッションの詳細情報を取得
-        const fullSession = await stripe.checkout.sessions.retrieve(
+        const fullSession = await stripe!.checkout.sessions.retrieve(
           session.id,
           {
             expand: ['customer', 'subscription'],
