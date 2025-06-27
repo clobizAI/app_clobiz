@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { stripe, isDemoMode } from '@/lib/stripe';
 import { createContract, createUser } from '@/lib/firestore';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
+  // デモモードの場合はwebhookを無効化
+  if (isDemoMode || !stripe) {
+    console.log('Demo mode: Webhook skipped');
+    return NextResponse.json({ received: true, demo: true });
+  }
+
   const sig = request.headers.get('stripe-signature') as string;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
