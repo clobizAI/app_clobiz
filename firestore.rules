@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      // ユーザーは自分の情報のみ読み書き可能
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // 管理者は全てのユーザー情報にアクセス可能（必要に応じて）
+      // allow read, write: if request.auth != null && 
+      //   request.auth.token.admin == true;
+    }
+    
+    // Contracts collection
+    match /contracts/{contractId} {
+      // ユーザーは自分の契約情報のみ閲覧可能
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // 契約の作成は認証済みユーザーのみ（Webhook経由での作成を想定）
+      allow create: if request.auth != null;
+      
+      // 契約の更新は本人または管理者のみ
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.token.admin == true
+      );
+      
+      // 削除は管理者のみ
+      allow delete: if request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // その他のコレクションはデフォルトでアクセス拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 
