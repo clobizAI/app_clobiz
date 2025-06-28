@@ -55,12 +55,10 @@ export async function POST(request: NextRequest) {
       throw new Error('Stripe not initialized');
     }
 
-    // ベースURLを決定（本番環境に対応）
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_SITE_URL 
+    // ベースURLを決定（本番環境優先）
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
       ? process.env.NEXT_PUBLIC_SITE_URL
-      : 'https://app-clobiz.vercel.app'; // デフォルトの本番URL
+      : 'https://app-clobiz.vercel.app'; // 安定した本番URL
 
     console.log('Using base URL for redirects:', baseUrl);
 
