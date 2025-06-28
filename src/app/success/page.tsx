@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useState, useMemo, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { businessApps, openaiProxyService } from '@/lib/stripe'
 import { useAuth } from '@/components/AuthProvider'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { updateUser, getUserByEmail, createUser } from '@/lib/firestore'
 
 function SuccessContent() {
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
   const isDemo = searchParams.get('demo') === 'true'
@@ -23,6 +27,10 @@ function SuccessContent() {
   
   const [sessionData, setSessionData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isPasswordSetting, setIsPasswordSetting] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (sessionId) {
@@ -49,6 +57,87 @@ function SuccessContent() {
       setLoading(false)
     }
   }, [sessionId, isDemo, planId, email, name, hasOpenAIProxy, selectedApps])
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!sessionData?.customer_email) {
+      setError('メールアドレスが指定されていません')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('パスワードが一致しません')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('パスワードは6文字以上で入力してください')
+      return
+    }
+
+    setIsPasswordSetting(true)
+    setError('')
+
+    try {
+      // Firebase Authでアカウントを作成
+      const { user } = await createUserWithEmailAndPassword(auth, sessionData.customer_email, password)
+      
+      // プロフィールを更新
+      if (sessionData.customer_name) {
+        await updateProfile(user, { displayName: sessionData.customer_name })
+      }
+
+      // Firestoreのユーザー情報を更新（パスワード設定完了フラグを削除）
+      try {
+        // メールアドレスで既存のFirestoreユーザーを検索
+        const existingUser = await getUserByEmail(sessionData.customer_email)
+        if (existingUser) {
+          // 既存ユーザーレコードを更新
+          await updateUser(existingUser.uid, {
+            passwordSetupRequired: false
+          })
+        } else {
+          // 新しいユーザーレコードを作成
+          await createUser(user.uid, {
+            email: sessionData.customer_email,
+            name: sessionData.customer_name || '',
+            passwordSetupRequired: false,
+            createdAt: new Date().toISOString()
+          })
+        }
+      } catch (error) {
+        console.error('Failed to update user flags:', error)
+        // エラーが発生してもログインは継続
+      }
+
+      // アカウント作成完了画面にリダイレクト
+      const params = new URLSearchParams({
+        email: sessionData.customer_email,
+        name: sessionData.customer_name || '',
+        plan: sessionData.plan_id || 'basic',
+        hasOpenAIProxy: sessionData.has_openai_proxy ? 'true' : 'false',
+        selectedApps: selectedApps.join(','),
+        amount: sessionData.amount_total.toString()
+      })
+      router.push(`/account-created?${params.toString()}`)
+    } catch (error: any) {
+      console.error('Password setup error:', error)
+      
+      let errorMessage = 'パスワード設定に失敗しました'
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'このメールアドレスは既に使用されています。ログインページからサインインしてください。'
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'パスワードが弱すぎます'
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'メールアドレスの形式が正しくありません'
+      }
+      
+      setError(errorMessage)
+    } finally {
+      setIsPasswordSetting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -85,8 +174,8 @@ function SuccessContent() {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <Link href="/" className="btn btn-primary">
-            🏠 ホームに戻る
+          <Link href="/login" className="btn btn-primary">
+            🔐 ログインページへ
           </Link>
         </div>
       </div>
@@ -100,7 +189,7 @@ function SuccessContent() {
           <span style={{ fontSize: '2.5rem', color: 'white' }}>🎉</span>
         </div>
         <h1 className="success-title">
-          お申し込み完了！
+          決済完了！
         </h1>
         <p className="success-subtitle">
           {sessionData?.customer_name}様、AI業務アプリサービスへのお申し込みありがとうございます！
@@ -196,20 +285,92 @@ function SuccessContent() {
         </div>
       )}
 
-      <div className="info-card" style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <div className="info-icon">
-          <span style={{ fontSize: '1.5rem' }}>💡</span>
+      {/* パスワード設定フォーム */}
+      <div className="details-card">
+        <h2 className="details-title">🔐 パスワード設定</h2>
+        <p style={{ color: 'var(--gray-600)', marginBottom: '1.5rem' }}>
+          アカウント「<strong>{sessionData?.customer_email}</strong>」のパスワードを設定してください
+        </p>
+        
+        <div style={{
+          background: 'var(--success-50)',
+          border: '1px solid var(--success-200)',
+          color: 'var(--success-800)',
+          padding: '1rem',
+          borderRadius: 'var(--radius-md)',
+          fontSize: '0.875rem',
+          marginBottom: '1.5rem'
+        }}>
+          ✅ 決済完了と同時にアカウントを作成いたしました
         </div>
-        <div className="info-content">
-          <h3 className="info-title">次のステップ</h3>
-          <ul className="info-list">
-            <li>📄 契約書の準備を開始いたします（1-2営業日）</li>
-            <li>📬 サービス利用開始のご案内をメールでお送りします</li>
-            <li>🔑 APIキーやアクセス情報をご提供します</li>
-            <li>📊 マイページからすぐにアプリを利用できます</li>
-            <li>🎯 専任サポートチームがセットアップをお手伝いします</li>
-          </ul>
-        </div>
+
+        <form onSubmit={handlePasswordSubmit} className="application-form">
+          {error && (
+            <div style={{
+              background: 'var(--red-50)',
+              border: '1px solid var(--red-200)',
+              color: 'var(--red-800)',
+              padding: '1rem',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1rem',
+              fontSize: '0.875rem'
+            }}>
+              ❌ {error}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
+              🔒 パスワード
+            </label>
+            <input
+              type="password"
+              id="password"
+              required
+              minLength={6}
+              className="form-input"
+              placeholder="6文字以上で入力"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isPasswordSetting}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword" className="form-label">
+              🔒 パスワード（確認）
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              required
+              minLength={6}
+              className="form-input"
+              placeholder="同じパスワードを再入力"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isPasswordSetting}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isPasswordSetting}
+            className="btn btn-primary"
+            style={{ width: '100%', fontSize: '1rem', padding: '1rem' }}
+          >
+            {isPasswordSetting ? (
+              <>
+                <div className="loading-spinner" style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.5rem' }}></div>
+                設定中...
+              </>
+            ) : (
+              <>
+                🚀 パスワードを設定してアカウント作成を完了する
+              </>
+            )}
+          </button>
+        </form>
       </div>
 
       {sessionData?.is_demo && (
@@ -238,69 +399,6 @@ function SuccessContent() {
           </div>
         </div>
       )}
-
-      <div className="actions-container">
-        <Link href="/" className="btn btn-secondary">
-          🏠 ホームに戻る
-        </Link>
-        {user ? (
-          <Link href="/mypage" className="btn btn-primary">
-            📊 マイページからアプリを利用する
-          </Link>
-        ) : (
-          <Link href="/login" className="btn btn-primary">
-            🔐 ログインしてアプリを利用する
-          </Link>
-        )}
-      </div>
-
-      <div style={{ 
-        textAlign: 'center', 
-        marginTop: '3rem', 
-        padding: '2rem', 
-        background: user ? 'var(--success-50)' : 'var(--primary-50)', 
-        borderRadius: 'var(--radius-lg)',
-        border: `1px solid ${user ? 'var(--success-200)' : 'var(--primary-200)'}`
-      }}>
-        <h3 style={{ 
-          fontSize: '1.25rem', 
-          fontWeight: '600', 
-          color: user ? 'var(--success-800)' : 'var(--primary-800)', 
-          marginBottom: '1rem' 
-        }}>
-          {user ? '🎉 ご利用開始のお知らせ' : '🎉 アカウント作成完了！'}
-        </h3>
-        <p style={{ color: user ? 'var(--success-700)' : 'var(--primary-700)', marginBottom: '1.5rem' }}>
-          {user ? (
-            <>
-              マイページからすぐにAI業務アプリをご利用いただけます！<br />
-              選択されたアプリが既に利用可能な状態になっています。
-            </>
-          ) : (
-            <>
-              決済完了と同時にアカウントを自動作成いたしました！<br />
-              <strong>「{sessionData?.customer_email}」</strong>でアカウント作成し、AIアプリをすぐにご利用いただけます。
-            </>
-          )}
-        </p>
-        {user ? (
-          <Link href="/mypage" className="btn btn-primary">
-            🚀 今すぐアプリを使い始める
-          </Link>
-        ) : (
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link 
-              href={`/setup-password?email=${encodeURIComponent(sessionData?.customer_email || '')}&name=${encodeURIComponent(sessionData?.customer_name || '')}`}
-              className="btn btn-primary"
-            >
-              🔐 パスワードを設定してアプリを使い始める
-            </Link>
-            <Link href="/login" className="btn btn-secondary">
-              既存アカウントでログイン
-            </Link>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

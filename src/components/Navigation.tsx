@@ -82,19 +82,6 @@ export function Navigation() {
                 <Link href="/login" className="nav-link">
                   🔐 ログイン
                 </Link>
-                <Link 
-                  href="/signup" 
-                  className="nav-link"
-                  style={{
-                    background: 'var(--primary-600)',
-                    color: 'white',
-                    padding: '0.5rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    textDecoration: 'none'
-                  }}
-                >
-                  ✨ 新規登録
-                </Link>
               </>
             )}
           </>
@@ -197,21 +184,6 @@ export function Navigation() {
                   <>
                     <Link href="/login" className="nav-link" onClick={closeMenu}>
                       🔐 ログイン
-                    </Link>
-                    <Link 
-                      href="/signup" 
-                      className="nav-link"
-                      onClick={closeMenu}
-                      style={{
-                        background: 'var(--primary-600)',
-                        color: 'white',
-                        padding: '0.75rem 1rem',
-                        borderRadius: 'var(--radius-md)',
-                        textDecoration: 'none',
-                        textAlign: 'center'
-                      }}
-                    >
-                      ✨ 新規登録
                     </Link>
                   </>
                 )}
