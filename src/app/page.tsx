@@ -284,13 +284,13 @@ export default function Home() {
                   {openAccordion === app.id && (
                     <div style={{
                       marginTop: '0.5rem',
-                      padding: '1.5rem',
+                      padding: '1.5rem 0 1.5rem 0',
                       background: 'white',
                       border: '1px solid var(--gray-200)',
                       borderRadius: 'var(--radius-md)',
                       boxShadow: 'var(--shadow-md)'
                     }}>
-                      <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                      <div style={{ textAlign: 'center', marginBottom: '1rem', padding: '0 1.5rem' }}>
                         <h5 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
                           {app.name} - デモ
                         </h5>
@@ -300,32 +300,54 @@ export default function Home() {
                       </div>
                       
                       {/* Dify埋め込みUI（デモ用） */}
-                      <div style={{
-                        height: '400px',
-                        border: '1px solid var(--gray-300)',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'var(--gray-50)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'column',
-                        gap: '1rem'
-                      }}>
-                        <div style={{ fontSize: '2rem' }}>🤖</div>
-                        <p style={{ color: 'var(--gray-600)', textAlign: 'center' }}>
-                          {app.name}のデモ画面<br />
-                          <small>本契約後に実際のアプリをご利用いただけます</small>
-                        </p>
-                        <a
-                          href={app.difyUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-primary"
-                          style={{ fontSize: '0.875rem' }}
-                        >
-                          フルバージョンを確認
-                        </a>
-                      </div>
+                      {app.id === 'email-assistant' ? (
+                        <div style={{
+                          height: 'calc(100vh - 200px)',
+                          minHeight: '500px',
+                          maxHeight: '700px',
+                          border: '1px solid var(--gray-300)',
+                          borderRadius: 'var(--radius-md)',
+                          background: 'white',
+                          overflow: 'hidden'
+                        }}>
+                          <iframe
+                            src={app.difyUrl}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              border: 'none'
+                            }}
+                            allow="microphone"
+                          />
+                        </div>
+                      ) : (
+                        <div style={{
+                          height: '400px',
+                          border: '1px solid var(--gray-300)',
+                          borderRadius: 'var(--radius-md)',
+                          background: 'var(--gray-50)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'column',
+                          gap: '1rem'
+                        }}>
+                          <div style={{ fontSize: '2rem' }}>🤖</div>
+                          <p style={{ color: 'var(--gray-600)', textAlign: 'center' }}>
+                            {app.name}のデモ画面<br />
+                            <small>本契約後に実際のアプリをご利用いただけます</small>
+                          </p>
+                          <a
+                            href={app.difyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.875rem' }}
+                          >
+                            フルバージョンを確認
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
