@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Contract } from '@/types'
@@ -14,20 +14,7 @@ export default function MyPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    // 認証チェック: ログインしていない場合はログインページにリダイレクト
-    if (!authLoading && !user) {
-      router.push('/login')
-      return
-    }
-
-    // ユーザーがログインしている場合のみ契約情報を取得
-    if (user && !authLoading) {
-      loadUserContracts()
-    }
-  }, [user, authLoading, router])
-
-  const loadUserContracts = async () => {
+  const loadUserContracts = useCallback(async () => {
     if (!user || !user.email) return
 
     try {
@@ -41,7 +28,20 @@ export default function MyPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    // 認証チェック: ログインしていない場合はログインページにリダイレクト
+    if (!authLoading && !user) {
+      router.push('/login')
+      return
+    }
+
+    // ユーザーがログインしている場合のみ契約情報を取得
+    if (user && !authLoading) {
+      loadUserContracts()
+    }
+  }, [user, authLoading, router, loadUserContracts])
 
   const handleAppOpen = (appId: string) => {
     const app = businessApps.find(a => a.id === appId)
