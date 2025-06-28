@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_development';
 
 // 開発用フラグ（実際の有効なStripeキーがない場合はデモモード）
-export const isDemoMode = true; // 開発中は常にデモモード
+export const isDemoMode = false; // テスト環境を使用
 
 // デモモードではnull、本番では実際のStripeインスタンス
 export const stripe = isDemoMode ? null : new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
@@ -101,7 +101,7 @@ export const plans = [
       '👨‍👩‍👧‍👦 利用ユーザー追加：無制限',
       '🗄️ データストレージ：5GB'
     ],
-    stripePriceId: 'price_test_basic_hkd',
+    stripePriceId: 'price_1ReuZ9H4hsO7RxQ6BVGs7Q8W',
   }
 ];
 
@@ -112,5 +112,5 @@ export const openaiProxyService = {
   price: 200,
   currency: 'HKD',
   description: 'OpenAI APIをお持ちでない方向けの代行サービス',
-  stripePriceId: 'price_test_openai_proxy_hkd',
+  stripePriceId: 'price_1Reua8H4hsO7RxQ6ayFN7Zbo',
 }; 
