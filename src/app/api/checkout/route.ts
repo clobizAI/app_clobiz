@@ -55,6 +55,15 @@ export async function POST(request: NextRequest) {
       throw new Error('Stripe not initialized');
     }
 
+    // ベースURLを決定（本番環境に対応）
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_SITE_URL 
+      ? process.env.NEXT_PUBLIC_SITE_URL
+      : 'https://app-clobiz.vercel.app'; // デフォルトの本番URL
+
+    console.log('Using base URL for redirects:', baseUrl);
+
     // ライン アイテムを構築
     const lineItems = [
       {
@@ -107,8 +116,8 @@ export async function POST(request: NextRequest) {
         // 現在はメールアドレスをキーとして使用
         userKey: email,
       },
-      success_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
-      cancel_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}`,
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
+      cancel_url: `${baseUrl}`,
     });
 
     return NextResponse.json({ url: session.url });
