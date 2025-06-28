@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
         hasOpenAIProxy: hasOpenAIProxy.toString(),
         selectedApps: selectedApps.join(','),
         totalPrice: totalPrice.toString(),
+        // 注意: 実際のFirebase UIDは別途認証チェックで取得する必要があります
+        // 現在はメールアドレスをキーとして使用
+        userKey: email,
       },
       success_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
       cancel_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}`,

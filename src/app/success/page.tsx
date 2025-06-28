@@ -4,8 +4,10 @@ import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { businessApps, openaiProxyService } from '@/lib/stripe'
+import { useAuth } from '@/components/AuthProvider'
 
 function SuccessContent() {
+  const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
   const isDemo = searchParams.get('demo') === 'true'
@@ -241,34 +243,63 @@ function SuccessContent() {
         <Link href="/" className="btn btn-secondary">
           🏠 ホームに戻る
         </Link>
-        <Link href="/mypage" className="btn btn-primary">
-          📊 マイページからアプリを利用する
-        </Link>
+        {user ? (
+          <Link href="/mypage" className="btn btn-primary">
+            📊 マイページからアプリを利用する
+          </Link>
+        ) : (
+          <Link href="/login" className="btn btn-primary">
+            🔐 ログインしてアプリを利用する
+          </Link>
+        )}
       </div>
 
       <div style={{ 
         textAlign: 'center', 
         marginTop: '3rem', 
         padding: '2rem', 
-        background: 'var(--success-50)', 
+        background: user ? 'var(--success-50)' : 'var(--primary-50)', 
         borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--success-200)'
+        border: `1px solid ${user ? 'var(--success-200)' : 'var(--primary-200)'}`
       }}>
         <h3 style={{ 
           fontSize: '1.25rem', 
           fontWeight: '600', 
-          color: 'var(--success-800)', 
+          color: user ? 'var(--success-800)' : 'var(--primary-800)', 
           marginBottom: '1rem' 
         }}>
-          🎉 ご利用開始のお知らせ
+          {user ? '🎉 ご利用開始のお知らせ' : '🎉 アカウント作成完了！'}
         </h3>
-        <p style={{ color: 'var(--success-700)', marginBottom: '1.5rem' }}>
-          マイページからすぐにAI業務アプリをご利用いただけます！<br />
-          選択されたアプリが既に利用可能な状態になっています。
+        <p style={{ color: user ? 'var(--success-700)' : 'var(--primary-700)', marginBottom: '1.5rem' }}>
+          {user ? (
+            <>
+              マイページからすぐにAI業務アプリをご利用いただけます！<br />
+              選択されたアプリが既に利用可能な状態になっています。
+            </>
+          ) : (
+            <>
+              決済完了と同時にアカウントを自動作成いたしました！<br />
+              <strong>「{sessionData?.customer_email}」</strong>でアカウント作成し、AIアプリをすぐにご利用いただけます。
+            </>
+          )}
         </p>
-        <Link href="/mypage" className="btn btn-primary">
-          🚀 今すぐアプリを使い始める
-        </Link>
+        {user ? (
+          <Link href="/mypage" className="btn btn-primary">
+            🚀 今すぐアプリを使い始める
+          </Link>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link 
+              href={`/setup-password?email=${encodeURIComponent(sessionData?.customer_email || '')}&name=${encodeURIComponent(sessionData?.customer_name || '')}`}
+              className="btn btn-primary"
+            >
+              🔐 パスワードを設定してアプリを使い始める
+            </Link>
+            <Link href="/login" className="btn btn-secondary">
+              既存アカウントでログイン
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )

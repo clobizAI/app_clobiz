@@ -14,22 +14,33 @@ service cloud.firestore {
     
     // Contracts collection
     match /contracts/{contractId} {
-      // ユーザーは自分の契約情報のみ閲覧可能
-      allow read: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
+      // ユーザーは自分のメールアドレスの契約情報のみ閲覧可能
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.token.email == resource.data.customerEmail
+      );
       
-      // 契約の作成は認証済みユーザーのみ（Webhook経由での作成を想定）
-      allow create: if request.auth != null;
+      // 契約の作成は認証済みユーザーまたはWebhook経由での作成を許可
+      allow create: if true; // Webhook経由での作成を許可
       
       // 契約の更新は本人または管理者のみ
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
+        request.auth.token.email == resource.data.customerEmail ||
         request.auth.token.admin == true
       );
       
       // 削除は管理者のみ
       allow delete: if request.auth != null && 
         request.auth.token.admin == true;
+    }
+    
+    // Collection group queries (email-based contract search)
+    match /{path=**}/contracts/{contractId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.token.email == resource.data.customerEmail
+      );
     }
     
     // その他のコレクションはデフォルトでアクセス拒否

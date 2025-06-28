@@ -1,10 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { plans, businessApps, openaiProxyService } from '@/lib/stripe'
 import { ApplicationForm } from '@/types'
+import { useAuth } from '@/components/AuthProvider'
+import Link from 'next/link'
 
 export default function Home() {
+  const { user } = useAuth()
+  const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState<ApplicationForm>({
     name: '',
     email: '',
@@ -14,6 +18,22 @@ export default function Home() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [openAccordion, setOpenAccordion] = useState<string | null>(null)
+
+  // クライアントサイドでのマウント完了を待つ
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // ログインユーザーの場合、フォームの初期値を設定（便利機能）
+  useEffect(() => {
+    if (user && !formData.name && !formData.email) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.displayName || '',
+        email: user.email || ''
+      }))
+    }
+  }, [user, formData.name, formData.email])
 
   const selectedPlan = plans[0] // 基本プランのみ
   const totalPrice = selectedPlan.price + (formData.hasOpenAIProxy ? openaiProxyService.price : 0)
@@ -151,6 +171,24 @@ export default function Home() {
               必要事項をご入力ください
             </p>
           </div>
+
+
+
+          {/* ログインユーザーへの案内 */}
+          {mounted && user && (
+            <div style={{
+              background: 'var(--success-50)',
+              border: '1px solid var(--success-200)',
+              color: 'var(--success-800)',
+              padding: '1rem',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.5rem',
+              fontSize: '0.875rem'
+            }}>
+              👤 <strong>{user.displayName || user.email}</strong> としてログイン中
+              {formData.name && formData.email && ' - フォームに情報を自動入力しました'}
+            </div>
+          )}
 
           {/* 基本情報 */}
           <div className="form-group">
@@ -366,7 +404,12 @@ export default function Home() {
             fontSize: '0.875rem',
             color: 'var(--gray-600)'
           }}>
-            <p>🔒 SSL暗号化通信により、お客様の情報を安全に保護しています</p>
+            <p style={{ marginBottom: '0.5rem' }}>
+              🔒 SSL暗号化通信により、お客様の情報を安全に保護しています
+            </p>
+            <p>
+              ✨ 申し込み完了と同時にアカウントを自動作成し、すぐにAIアプリをご利用いただけます
+            </p>
           </div>
         </form>
       </div>

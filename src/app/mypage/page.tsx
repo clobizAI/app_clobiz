@@ -1,45 +1,47 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Contract } from '@/types'
 import { businessApps } from '@/lib/stripe'
+import { useAuth } from '@/components/AuthProvider'
+import { getUserContractsByEmail } from '@/lib/firestore'
 
 export default function MyPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    // 実際の実装では、Firebase Authで認証済みユーザーの契約情報を取得
-    // ここではダミーデータを使用
-    setTimeout(() => {
-      setUser({
-        uid: 'demo-user-123',
-        email: 'user@example.com',
-        name: '山田太郎',
-      })
+    // 認証チェック: ログインしていない場合はログインページにリダイレクト
+    if (!authLoading && !user) {
+      router.push('/login')
+      return
+    }
 
-      setContracts([
-        {
-          id: 'contract-1',
-          userId: 'demo-user-123',
-          planId: 'basic',
-          planName: '基本プラン',
-          status: 'active',
-          startDate: '2025-06-01T00:00:00Z',
-          stripeCustomerId: 'cus_example123',
-          stripeSubscriptionId: 'sub_example123',
-          contractPdfUrl: 'https://example.com/contracts/demo-user-123.pdf',
-          hasOpenAIProxy: true,
-          selectedApps: ['faq-chat-ai', 'document-analyzer', 'email-assistant'],
-          createdAt: '2025-06-01T00:00:00Z',
-          updatedAt: '2025-06-01T00:00:00Z',
-        },
-      ])
+    // ユーザーがログインしている場合のみ契約情報を取得
+    if (user && !authLoading) {
+      loadUserContracts()
+    }
+  }, [user, authLoading, router])
+
+  const loadUserContracts = async () => {
+    if (!user || !user.email) return
+
+    try {
+      setLoading(true)
+      const userContracts = await getUserContractsByEmail(user.email)
+      
+      // 実際の契約データのみを表示
+      setContracts(userContracts)
+    } catch (error) {
+      console.error('Error loading contracts:', error)
+    } finally {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }
 
   const handleAppOpen = (appId: string) => {
     const app = businessApps.find(a => a.id === appId)
@@ -52,6 +54,24 @@ export default function MyPage() {
     alert('アプリ追加申請機能は準備中です。サポートまでお問い合わせください。')
   }
 
+  // 認証中の場合
+  if (authLoading) {
+    return (
+      <div className="mypage-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">認証状態を確認しています...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 未認証の場合
+  if (!user) {
+    return null // リダイレクト中
+  }
+
+  // データ読み込み中
   if (loading) {
     return (
       <div className="mypage-container">
@@ -78,11 +98,17 @@ export default function MyPage() {
         <div className="user-grid">
           <div className="user-field">
             <span className="user-label">お名前</span>
-            <span className="user-value">{user?.name || 'ユーザー'}</span>
+            <span className="user-value">{user.displayName || 'ユーザー'}</span>
           </div>
           <div className="user-field">
             <span className="user-label">メールアドレス</span>
-            <span className="user-value">{user?.email}</span>
+            <span className="user-value">{user.email}</span>
+          </div>
+          <div className="user-field">
+            <span className="user-label">登録日</span>
+            <span className="user-value">
+              {user.metadata.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('ja-JP') : '不明'}
+            </span>
           </div>
         </div>
       </div>
@@ -166,10 +192,12 @@ export default function MyPage() {
                     <span className="contract-label">契約ID</span>
                     <span className="contract-value">{contract.id}</span>
                   </div>
-                  <div className="contract-field">
-                    <span className="contract-label">Stripe顧客ID</span>
-                    <span className="contract-value">{contract.stripeCustomerId}</span>
-                  </div>
+                  {contract.stripeCustomerId && (
+                    <div className="contract-field">
+                      <span className="contract-label">Stripe顧客ID</span>
+                      <span className="contract-value">{contract.stripeCustomerId}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -198,141 +226,66 @@ export default function MyPage() {
                     transition: 'all 0.2s ease'
                   }}>
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                      <h4 style={{ 
+                        fontSize: '1.125rem', 
+                        fontWeight: '600', 
+                        color: 'var(--gray-900)', 
+                        marginBottom: '0.5rem' 
+                      }}>
                         {app.name}
                       </h4>
-                      <p style={{ fontSize: '0.95rem', color: 'var(--gray-600)', marginBottom: '0.5rem' }}>
+                      <p style={{ 
+                        color: 'var(--gray-600)', 
+                        fontSize: '0.875rem',
+                        marginBottom: '0.75rem' 
+                      }}>
                         {app.description}
                       </p>
                       <span style={{
-                        display: 'inline-block',
-                        background: 'var(--success-100)',
-                        color: 'var(--success-800)',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
+                        background: 'var(--primary-100)',
+                        color: 'var(--primary-800)',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
                         fontSize: '0.75rem',
                         fontWeight: '600'
                       }}>
-                        ✅ 利用可能
+                        {app.category}
                       </span>
                     </div>
                     <button
                       onClick={() => handleAppOpen(appId)}
                       className="btn btn-primary"
-                      style={{ fontSize: '0.95rem' }}
+                      style={{ fontSize: '0.875rem' }}
                     >
-                      🚀 開く
+                      🚀 アプリを開く
                     </button>
                   </div>
                 ) : null
               })}
             </div>
             
-            {/* アプリ追加申請ボタン */}
             <div style={{ 
               textAlign: 'center', 
-              marginTop: '2rem', 
+              marginTop: '2rem',
               padding: '1.5rem',
               background: 'var(--gray-50)',
-              border: '1px solid var(--gray-200)',
-              borderRadius: 'var(--radius-lg)'
+              borderRadius: 'var(--radius-lg)',
+              border: '1px dashed var(--gray-300)'
             }}>
-              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                さらにアプリを追加しませんか？
-              </h4>
-              <p style={{ fontSize: '0.95rem', color: 'var(--gray-600)', marginBottom: '1.5rem' }}>
-                他の業務アプリもご利用いただけます
+              <p style={{ color: 'var(--gray-600)', marginBottom: '1rem' }}>
+                他のAIアプリもご利用になりたい場合はお申し付けください
               </p>
               <button
                 onClick={handleAddAppRequest}
                 className="btn btn-secondary"
-                style={{ fontSize: '0.95rem' }}
+                style={{ fontSize: '0.875rem' }}
               >
-                ➕ アプリを追加申請する
+                ➕ アプリ追加を申請
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* 利用可能アプリがない場合 */}
-      {activeContract && (!activeContract.selectedApps || activeContract.selectedApps.length === 0) && (
-        <div className="contracts-card">
-          <div className="contracts-header">
-            <h2 className="contracts-title">🎯 ご利用中のAIアプリ</h2>
-          </div>
-          <div className="empty-state">
-            <div className="empty-icon">
-              <span style={{ fontSize: '4rem' }}>🤖</span>
-            </div>
-            <h3 className="empty-title">利用中のアプリがありません</h3>
-            <p className="empty-description">アプリを追加して、AI業務効率化を始めましょう。</p>
-            <div>
-              <button
-                onClick={handleAddAppRequest}
-                className="btn btn-primary"
-              >
-                ➕ アプリを追加申請する
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* アクションボタン */}
-      <div className="actions-container">
-        <Link href="/" className="btn btn-secondary">
-          🆕 新しいプランを申し込む
-        </Link>
-        <button
-          type="button"
-          className="btn btn-danger"
-          onClick={() => {
-            // 実際の実装ではFirebase Authのサインアウト
-            alert('ログアウト機能は実装中です')
-          }}
-        >
-          🚪 ログアウト
-        </button>
-      </div>
-
-      {/* サポート情報 */}
-      <div style={{ 
-        textAlign: 'center', 
-        marginTop: '3rem', 
-        padding: '2rem', 
-        background: 'var(--gray-50)', 
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--gray-200)'
-      }}>
-        <h3 style={{ 
-          fontSize: '1.25rem', 
-          fontWeight: '600', 
-          color: 'var(--gray-900)', 
-          marginBottom: '1rem' 
-        }}>
-          🙋‍♂️ ご不明な点はございませんか？
-        </h3>
-        <p style={{ color: 'var(--gray-600)', marginBottom: '1.5rem' }}>
-          サポートチームが24時間体制でお客様をサポートいたします
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <a 
-            href="mailto:support@clobiz.ai" 
-            className="btn btn-secondary"
-            style={{ fontSize: '0.95rem' }}
-          >
-            📧 メールサポート
-          </a>
-          <a 
-            href="tel:0120-000-000" 
-            className="btn btn-secondary"
-            style={{ fontSize: '0.95rem' }}
-          >
-            📞 お電話でのお問い合わせ
-          </a>
-        </div>
-      </div>
     </div>
   )
 } 

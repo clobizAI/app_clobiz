@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isDemoMode } from '@/lib/stripe';
-import { createContract, createUser } from '@/lib/firestore';
+import { createContract, createUser, getUserByEmail } from '@/lib/firestore';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -47,33 +47,53 @@ export async function POST(request: NextRequest) {
           }
         );
 
-        const { planId, customerName, customerEmail } = fullSession.metadata || {};
+        const { 
+          planId, 
+          customerName, 
+          customerEmail, 
+          hasOpenAIProxy, 
+          selectedApps 
+        } = fullSession.metadata || {};
         
         if (!planId || !customerName || !customerEmail) {
           console.error('Missing metadata in checkout session');
           break;
         }
 
-        // ユーザーIDを生成（実際のプロジェクトではFirebase Authと連携）
-        const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        // メールアドレスで既存のFirestoreユーザーを検索
+        let existingUser = await getUserByEmail(customerEmail);
+        let userId: string;
 
-        // ユーザー作成
-        await createUser(userId, {
-          email: customerEmail,
-          name: customerName,
-          createdAt: new Date().toISOString(),
-        });
+        if (existingUser) {
+          // 既存ユーザーが見つかった場合
+          userId = existingUser.uid;
+          console.log('Found existing user:', userId);
+        } else {
+          // 新しいユーザーレコードを作成（申し込み時自動作成）
+          userId = `user_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+          await createUser(userId, {
+            email: customerEmail,
+            name: customerName,
+            passwordSetupRequired: true, // 自動作成のためパスワード設定が必要
+            createdAt: new Date().toISOString(),
+          });
+          console.log('Auto-created user record for checkout:', userId);
+        }
 
         // 契約情報を作成
         await createContract({
           userId: userId,
           planId: planId,
-          planName: planId,
-          status: 'active',
+          planName: planId === 'basic' ? '基本プラン' : planId,
+          status: 'active' as const,
           startDate: new Date().toISOString(),
           stripeCustomerId: fullSession.customer as string,
           stripeSubscriptionId: (fullSession.subscription as Stripe.Subscription)?.id,
           contractPdfUrl: `https://example.com/contracts/${userId}.pdf`, // 仮のURL
+          hasOpenAIProxy: hasOpenAIProxy === 'true',
+          selectedApps: selectedApps ? selectedApps.split(',') : [],
+          passwordSetupRequired: !existingUser, // 新規作成の場合はパスワード設定が必要
+          customerEmail: customerEmail, // メールアドレスでの検索用
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });

@@ -3,6 +3,7 @@ export interface User {
   uid: string;
   email: string;
   name: string;
+  passwordSetupRequired?: boolean; // 自動作成アカウントのパスワード設定が必要
   createdAt: string;
 }
 
@@ -50,6 +51,8 @@ export interface Contract {
   contractPdfUrl?: string;
   hasOpenAIProxy?: boolean;
   selectedApps?: string[];
+  passwordSetupRequired?: boolean; // 自動作成アカウントのパスワード設定が必要
+  customerEmail?: string; // メールアドレスでの検索用
   createdAt: string;
   updatedAt: string;
 }

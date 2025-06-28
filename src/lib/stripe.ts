@@ -87,20 +87,17 @@ export const businessApps = [
 export const plans = [
   {
     id: 'basic',
-    name: '基本プラン',
+    name: '基本プラン【Dify】',
     price: 800,
     currency: 'HKD',
     features: [
       '🇯🇵 多言語UIで誰でも使える',
       '⚡ ノーコード導入（設定不要）',
       '🔒 入力内容はAIに学習されません',
-      '📊 ログが残り、管理しやすい',
-      
-      '🚀 アプリ追加：無制限'
+      '📊 ログが残り、管理しやすい',      
     ],
-    benefits: [
-      
-      
+    benefits: [      
+      '🚀 アプリ追加：無制限',
       '👨‍👩‍👧‍👦 利用ユーザー追加：無制限',
       '🗄️ データストレージ：5GB'
     ],
@@ -111,7 +108,7 @@ export const plans = [
 // OpenAI API代行サービス
 export const openaiProxyService = {
   id: 'openai-proxy',
-  name: 'OpenAI API代行',
+  name: 'API代行『OpenAI』',
   price: 200,
   currency: 'HKD',
   description: 'OpenAI APIをお持ちでない方向けの代行サービス',

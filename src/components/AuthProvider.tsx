@@ -1,14 +1,15 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
+import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { createUser, getUser } from '@/lib/firestore'
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -19,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
       setLoading(false)
     })
@@ -31,8 +32,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password)
   }
 
-  const signUp = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password)
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, password)
+      
+      // プロフィールを更新
+      await updateProfile(user, { displayName: name })
+      
+      // Firestoreにユーザー情報を保存
+      await createUser(user.uid, {
+        email: user.email!,
+        name: name,
+        createdAt: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Sign up error:', error)
+      throw error
+    }
   }
 
   const logout = async () => {

@@ -38,6 +38,30 @@ export const getUser = async (userId: string): Promise<User | null> => {
   }
 };
 
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  if (isFirebaseDemo) {
+    console.log('Demo mode: User retrieval by email skipped', { email });
+    return null;
+  }
+  
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('email', '==', email)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      return userDoc.data() as User;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    throw error;
+  }
+};
+
 // 契約操作
 export const createContract = async (contractData: Omit<Contract, 'id'>) => {
   if (isFirebaseDemo) {
@@ -78,6 +102,22 @@ export const updateContract = async (contractId: string, updates: Partial<Contra
   }
 };
 
+export const updateUser = async (userId: string, updates: Partial<User>) => {
+  if (isFirebaseDemo) {
+    console.log('Demo mode: User update skipped', { userId, updates });
+    return;
+  }
+  
+  try {
+    await updateDoc(doc(db, 'users', userId), {
+      ...updates,
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
 export const getUserContracts = async (userId: string): Promise<Contract[]> => {
   if (isFirebaseDemo) {
     console.log('Demo mode: Contract retrieval skipped', { userId });
@@ -100,6 +140,49 @@ export const getUserContracts = async (userId: string): Promise<Contract[]> => {
     return contracts;
   } catch (error) {
     console.error('Error getting user contracts:', error);
+    throw error;
+  }
+};
+
+export const getUserContractsByEmail = async (email: string): Promise<Contract[]> => {
+  if (isFirebaseDemo) {
+    console.log('Demo mode: Contract retrieval by email skipped', { email });
+    // デモ用のダミーデータを返す
+    return [
+      {
+        id: 'contract-demo',
+        userId: 'demo-user',
+        planId: 'basic',
+        planName: '基本プラン',
+        status: 'active',
+        startDate: '2025-06-01T00:00:00Z',
+        stripeCustomerId: 'cus_demo',
+        stripeSubscriptionId: 'sub_demo',
+        contractPdfUrl: 'https://example.com/contracts/demo.pdf',
+        hasOpenAIProxy: true,
+        selectedApps: ['faq-chat-ai', 'document-analyzer', 'email-assistant'],
+        createdAt: '2025-06-01T00:00:00Z',
+        updatedAt: '2025-06-01T00:00:00Z',
+      },
+    ];
+  }
+  
+  try {
+    const q = query(
+      collection(db, 'contracts'),
+      where('customerEmail', '==', email)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const contracts: Contract[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      contracts.push(doc.data() as Contract);
+    });
+    
+    return contracts;
+  } catch (error) {
+    console.error('Error getting user contracts by email:', error);
     throw error;
   }
 }; 
