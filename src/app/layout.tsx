@@ -22,7 +22,9 @@ export default function RootLayout({
             <header className="header">
               <div className="header-content">
                 <div className="logo">
-                  <h1>🤖 CloBiz AI</h1>
+                  <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <h1 style={{ cursor: 'pointer' }}>🤖 CloBiz AI</h1>
+                  </Link>
                 </div>
                 <Navigation />
               </div>
@@ -37,7 +39,7 @@ export default function RootLayout({
             }}>
               <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
                 <p style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600' }}>
-                  🤖 CloBiz AI - 次世代AIソリューション
+                  🤖 CloBiz - 次世代AIソリューション
                 </p>
                 <div style={{ 
                   display: 'flex', 
@@ -47,20 +49,14 @@ export default function RootLayout({
                   marginBottom: '1rem'
                 }}>
                   <a 
-                    href="mailto:support@clobiz.ai" 
+                    href="mailto:info@clobiz.net" 
                     style={{ color: 'var(--gray-300)', textDecoration: 'none', fontSize: '0.95rem' }}
                   >
-                    📧 support@clobiz.ai
-                  </a>
-                  <a 
-                    href="tel:0120-000-000" 
-                    style={{ color: 'var(--gray-300)', textDecoration: 'none', fontSize: '0.95rem' }}
-                  >
-                    📞 0120-000-000
+                    📧 info@clobiz.net
                   </a>
                 </div>
                 <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', margin: 0 }}>
-                  © 2025 CloBiz AI. All rights reserved. | 🔒 SSL暗号化通信対応
+                  © 2025 CloBiz. All rights reserved. | 🔒 SSL暗号化通信対応
                 </p>
               </div>
             </footer>

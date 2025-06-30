@@ -10,9 +10,11 @@ export default function Home() {
   const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState<ApplicationForm>({
+    applicantType: 'corporate', // デフォルトは法人（メイン顧客のため）
     name: '',
+    companyName: '',
     email: '',
-    planId: 'basic', // 基本プラン固定
+    planId: 'basic', // 基本プラン800ドル
     hasOpenAIProxy: false,
     selectedApps: []
   })
@@ -36,8 +38,10 @@ export default function Home() {
     }
   }, [user, formData.name, formData.email])
 
-  const selectedPlan = plans[0] // 基本プランのみ
-  const totalPrice = selectedPlan.price + (formData.hasOpenAIProxy ? openaiProxyService.price : 0)
+  // 料金計算：基本800 + アプリ×400 + API代行200
+  const selectedPlan = plans.find(plan => plan.id === formData.planId) || plans[0]
+  const selectedAppsPrice = formData.selectedApps.length * 400 // 各アプリ400ドル
+  const totalPrice = selectedPlan.price + selectedAppsPrice + (formData.hasOpenAIProxy ? openaiProxyService.price : 0)
 
   const handleAppSelection = (appId: string) => {
     setFormData(prev => ({
@@ -132,7 +136,7 @@ export default function Home() {
         </p>
       </div>
 
-      {/* 基本プラン表示（固定） */}
+      {/* 基本プラン表示 */}
       <div style={{ maxWidth: '700px', margin: '0 auto 3rem' }}>
         <div className="plan-card plan-card-selected">
           <div className="plan-content">
@@ -141,7 +145,7 @@ export default function Home() {
             </h3>
             <div className="plan-price">
               {selectedPlan.currency}${selectedPlan.price.toLocaleString()}
-              <span className="plan-period">/月</span>
+              <span className="plan-period">/月（基本料金）</span>
             </div>
             
             {/* 特徴セクション */}
@@ -156,7 +160,7 @@ export default function Home() {
                 ✨ 特徴
               </h4>
               <ul className="plan-features">
-                {selectedPlan.features.map((feature, index) => (
+                {selectedPlan.features.map((feature: string, index: number) => (
                   <li key={index} className="plan-feature">
                     <span className="feature-check">✓</span>
                     {feature}
@@ -177,7 +181,7 @@ export default function Home() {
                 🎁 ご利用制限・メリット
               </h4>
               <ul className="plan-features">
-                {selectedPlan.benefits.map((benefit, index) => (
+                {selectedPlan.benefits.map((benefit: string, index: number) => (
                   <li key={index} className="plan-feature">
                     <span className="feature-check">✓</span>
                     {benefit}
@@ -185,6 +189,24 @@ export default function Home() {
                 ))}
               </ul>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 料金体系の説明 */}      
+      <div style={{ maxWidth: '700px', margin: '0 auto 3rem' }}>
+        <div className="plan-card">
+          <div className="plan-content" style={{ textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-800)', marginBottom: '1rem' }}>
+              💰 アプリ追加料金
+            </h3>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary-600)', marginBottom: '0.5rem' }}>
+              +HK$400
+              <span style={{ fontSize: '1rem', fontWeight: '400', color: 'var(--gray-600)' }}>/月・アプリごと</span>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
+              下記から必要なアプリを選択してください
+            </p>
           </div>
         </div>
       </div>
@@ -217,17 +239,66 @@ export default function Home() {
             </div>
           )}
 
+          {/* 申込者区分選択 */}
+          <div className="form-group">
+            <label className="form-label">
+              🏢 申込者区分
+            </label>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="applicantType"
+                  value="corporate"
+                  checked={formData.applicantType === 'corporate'}
+                  onChange={(e) => setFormData({ ...formData, applicantType: e.target.value as 'individual' | 'corporate' })}
+                  style={{ width: '1.25rem', height: '1.25rem' }}
+                />
+                🏢 法人・団体
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="applicantType"
+                  value="individual"
+                  checked={formData.applicantType === 'individual'}
+                  onChange={(e) => setFormData({ ...formData, applicantType: e.target.value as 'individual' | 'corporate' })}
+                  style={{ width: '1.25rem', height: '1.25rem' }}
+                />
+                👤 個人
+              </label>
+            </div>
+          </div>
+
+          {/* 法人名（法人選択時のみ表示） */}
+          {formData.applicantType === 'corporate' && (
+            <div className="form-group">
+              <label htmlFor="companyName" className="form-label">
+                🏢 法人名・会社名・団体名
+              </label>
+              <input
+                type="text"
+                id="companyName"
+                required
+                className="form-input"
+                placeholder="株式会社〇〇、〇〇協会など"
+                value={formData.companyName || ''}
+                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+              />
+            </div>
+          )}
+
           {/* 基本情報 */}
           <div className="form-group">
             <label htmlFor="name" className="form-label">
-              👤 お名前
+              {formData.applicantType === 'individual' ? '👤 お名前' : '👤 ご担当者名'}
             </label>
             <input
               type="text"
               id="name"
               required
               className="form-input"
-              placeholder="山田太郎"
+              placeholder={formData.applicantType === 'individual' ? '山田太郎' : '山田太郎（ご担当者様）'}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
@@ -290,9 +361,21 @@ export default function Home() {
                       style={{ width: '1.25rem', height: '1.25rem', marginRight: '1rem' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
-                        {app.name}
-                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--gray-900)', margin: 0 }}>
+                          {app.name}
+                        </h4>
+                        <span style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: '600', 
+                          color: 'var(--primary-600)', 
+                          background: 'var(--primary-50)', 
+                          padding: '0.25rem 0.5rem', 
+                          borderRadius: '0.25rem' 
+                        }}>
+                          +HK$400/月
+                        </span>
+                      </div>
                       <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
                         {app.description}
                       </p>
@@ -311,21 +394,12 @@ export default function Home() {
                   {openAccordion === app.id && (
                     <div style={{
                       marginTop: '0.5rem',
-                      padding: '1.5rem 0 1.5rem 0',
+                      padding: '0.5rem',
                       background: 'white',
                       border: '1px solid var(--gray-200)',
                       borderRadius: 'var(--radius-md)',
                       boxShadow: 'var(--shadow-md)'
                     }}>
-                      <div style={{ textAlign: 'center', marginBottom: '1rem', padding: '0 1.5rem' }}>
-                        <h5 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                          {app.name} - デモ
-                        </h5>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
-                          実際のアプリをお試しいただけます
-                        </p>
-                      </div>
-                      
                       {/* Dify埋め込みUI（デモ用） */}
                       {app.id === 'email-assistant' ? (
                         <div style={{
@@ -449,32 +523,74 @@ export default function Home() {
               💰 お申し込み内容・料金
             </h4>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              {/* 基本プラン */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '0.5rem',
+                padding: '0.5rem',
+                background: 'var(--primary-50)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--primary-200)'
+              }}>
                 <span>🎯 {selectedPlan.name}</span>
                 <span style={{ fontWeight: '600' }}>HK${selectedPlan.price}</span>
               </div>
-              {formData.hasOpenAIProxy && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span>🔒 {openaiProxyService.name}</span>
-                  <span style={{ fontWeight: '600' }}>HK${openaiProxyService.price}</span>
-                </div>
-              )}
-              {formData.selectedApps.length > 0 && (
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-200)' }}>
-                  <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                    📦 選択中のアプリ ({formData.selectedApps.length}個):
+
+              {/* 選択されたアプリ */}
+              {formData.selectedApps.length > 0 ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem' }}>
+                    📦 追加アプリ ({formData.selectedApps.length}個):
                   </p>
                   {formData.selectedApps.map(appId => {
                     const app = businessApps.find(a => a.id === appId)
                     return app ? (
-                      <div key={appId} style={{ fontSize: '0.875rem', color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
-                        • {app.name}
+                      <div key={appId} style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        marginBottom: '0.5rem',
+                        padding: '0.5rem',
+                        background: 'var(--gray-50)',
+                        borderRadius: 'var(--radius-sm)'
+                      }}>
+                        <span>• {app.name}</span>
+                        <span style={{ fontWeight: '600' }}>+HK$400</span>
                       </div>
                     ) : null
                   })}
                 </div>
+              ) : (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '1rem', 
+                  background: 'var(--gray-50)', 
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--gray-600)',
+                  marginTop: '1rem'
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📱</div>
+                  <p style={{ fontSize: '0.875rem' }}>アプリを選択すると追加料金が表示されます</p>
+                </div>
+              )}
+              
+              {/* OpenAI API代行 */}
+              {formData.hasOpenAIProxy && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  marginTop: '1rem',
+                  padding: '0.5rem',
+                  background: 'var(--orange-50)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--orange-200)'
+                }}>
+                  <span>🔒 {openaiProxyService.name}</span>
+                  <span style={{ fontWeight: '600' }}>+HK${openaiProxyService.price}</span>
+                </div>
               )}
             </div>
+            
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 

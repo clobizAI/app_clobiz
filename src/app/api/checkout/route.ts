@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, plans, openaiProxyService, isDemoMode } from '@/lib/stripe';
+import { stripe, plans, businessApps, openaiProxyService, isDemoMode } from '@/lib/stripe';
 import { ApplicationForm } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body: ApplicationForm = await request.json();
-    const { name, email, planId, hasOpenAIProxy, selectedApps } = body;
+    const { applicantType, name, companyName, email, planId, hasOpenAIProxy, selectedApps } = body;
 
     // プラン情報を取得
     const selectedPlan = plans.find(plan => plan.id === planId);
@@ -16,13 +16,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 合計金額計算
+    // 合計金額計算：基本800 + アプリ×400 + API代行200
     const basePrice = selectedPlan.price;
+    const appsPrice = selectedApps.length * 400; // 各アプリ400ドル
     const proxyPrice = hasOpenAIProxy ? openaiProxyService.price : 0;
-    const totalPrice = basePrice + proxyPrice;
+    const totalPrice = basePrice + appsPrice + proxyPrice;
 
     console.log('Checkout request:', { 
+      applicantType,
       name, 
+      companyName,
       email, 
       planId, 
       hasOpenAIProxy, 
@@ -39,8 +42,10 @@ export async function POST(request: NextRequest) {
         session_id: `cs_test_demo_${Date.now()}`,
         demo: 'true',
         plan: planId,
+        applicantType: applicantType,
         email: email,
         name: name,
+        companyName: companyName || '',
         hasOpenAIProxy: hasOpenAIProxy.toString(),
         selectedApps: selectedApps.join(',')
       });
@@ -64,6 +69,7 @@ export async function POST(request: NextRequest) {
 
     // ライン アイテムを構築
     const lineItems = [
+      // 基本プラン
       {
         price_data: {
           currency: 'hkd',
@@ -79,6 +85,27 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       },
     ];
+
+    // 追加アプリが選択されている場合は追加
+    if (selectedApps.length > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'hkd',
+          product_data: {
+            name: `追加アプリ (${selectedApps.length}個)`,
+            description: selectedApps.map(appId => {
+              const app = businessApps.find(app => app.id === appId);
+              return app ? app.name : appId;
+            }).join('、'),
+          },
+          unit_amount: 400 * 100, // HKD cents
+          recurring: {
+            interval: 'month' as const,
+          },
+        },
+        quantity: selectedApps.length,
+      });
+    }
 
     // OpenAI API代行が選択されている場合は追加
     if (hasOpenAIProxy) {
@@ -105,7 +132,9 @@ export async function POST(request: NextRequest) {
       line_items: lineItems,
       metadata: {
         planId: planId,
+        applicantType: applicantType,
         customerName: name,
+        companyName: companyName || '',
         customerEmail: email,
         hasOpenAIProxy: hasOpenAIProxy.toString(),
         selectedApps: selectedApps.join(','),
@@ -114,7 +143,7 @@ export async function POST(request: NextRequest) {
         // 現在はメールアドレスをキーとして使用
         userKey: email,
       },
-      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&applicantType=${applicantType}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&companyName=${encodeURIComponent(companyName || '')}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
       cancel_url: `${baseUrl}`,
     });
 

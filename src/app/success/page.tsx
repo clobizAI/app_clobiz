@@ -16,8 +16,10 @@ function SuccessContent() {
   const sessionId = searchParams.get('session_id')
   const isDemo = searchParams.get('demo') === 'true'
   const planId = searchParams.get('plan')
+  const applicantType = searchParams.get('applicantType') || 'corporate'
   const email = searchParams.get('email')
   const name = searchParams.get('name')
+  const companyName = searchParams.get('companyName')
   const hasOpenAIProxy = searchParams.get('hasOpenAIProxy') === 'true'
   const selectedAppsParam = searchParams.get('selectedApps')
   
@@ -43,8 +45,10 @@ function SuccessContent() {
         setSessionData({
           id: sessionId,
           payment_status: 'paid',
+          applicant_type: applicantType,
           customer_email: email || 'customer@example.com',
           customer_name: name || 'お客様',
+          company_name: companyName || '',
           plan_id: planId || 'basic',
           amount_total: totalPrice,
           has_openai_proxy: hasOpenAIProxy,
@@ -56,7 +60,7 @@ function SuccessContent() {
     } else {
       setLoading(false)
     }
-  }, [sessionId, isDemo, planId, email, name, hasOpenAIProxy, selectedApps])
+  }, [sessionId, isDemo, planId, applicantType, email, name, companyName, hasOpenAIProxy, selectedApps])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -200,7 +204,21 @@ function SuccessContent() {
         <h2 className="details-title">📋 お申し込み詳細</h2>
         <div className="details-grid">
           <div className="detail-item">
-            <span className="detail-label">👤 お名前</span>
+            <span className="detail-label">🏢 申込者区分</span>
+            <span className="detail-value">
+              {sessionData?.applicant_type === 'corporate' ? '🏢 法人・団体' : '👤 個人'}
+            </span>
+          </div>
+          {sessionData?.applicant_type === 'corporate' && sessionData?.company_name && (
+            <div className="detail-item">
+              <span className="detail-label">🏢 法人名・会社名</span>
+              <span className="detail-value">{sessionData.company_name}</span>
+            </div>
+          )}
+          <div className="detail-item">
+            <span className="detail-label">
+              {sessionData?.applicant_type === 'corporate' ? '👤 ご担当者名' : '👤 お名前'}
+            </span>
             <span className="detail-value">{sessionData?.customer_name}</span>
           </div>
           <div className="detail-item">

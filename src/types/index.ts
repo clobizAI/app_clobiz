@@ -3,6 +3,8 @@ export interface User {
   uid: string;
   email: string;
   name: string;
+  applicantType?: 'individual' | 'corporate'; // 申込者区分
+  companyName?: string; // 法人名・会社名
   passwordSetupRequired?: boolean; // 自動作成アカウントのパスワード設定が必要
   createdAt: string;
 }
@@ -14,6 +16,9 @@ export interface BusinessApp {
   description: string;
   difyUrl: string;
   category: string;
+  price: number;
+  currency: string;
+  stripePriceId: string;
 }
 
 // Plan Types
@@ -51,6 +56,8 @@ export interface Contract {
   contractPdfUrl?: string;
   hasOpenAIProxy?: boolean;
   selectedApps?: string[];
+  applicantType?: 'individual' | 'corporate'; // 申込者区分
+  companyName?: string; // 法人名・会社名
   passwordSetupRequired?: boolean; // 自動作成アカウントのパスワード設定が必要
   customerEmail?: string; // メールアドレスでの検索用
   createdAt: string;
@@ -59,7 +66,9 @@ export interface Contract {
 
 // Form Types
 export interface ApplicationForm {
-  name: string;
+  applicantType: 'individual' | 'corporate'; // 申込者区分
+  name: string; // 個人名または担当者名
+  companyName?: string; // 法人名・会社名
   email: string;
   planId: string;
   hasOpenAIProxy: boolean;

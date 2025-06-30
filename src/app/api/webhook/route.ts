@@ -66,7 +66,9 @@ export async function POST(request: NextRequest) {
 
         const { 
           planId, 
-          customerName, 
+          applicantType,
+          customerName,
+          companyName, 
           customerEmail, 
           hasOpenAIProxy, 
           selectedApps 
@@ -74,7 +76,9 @@ export async function POST(request: NextRequest) {
         
         console.log('🏷️ Extracted metadata:', {
           planId,
+          applicantType,
           customerName,
+          companyName,
           customerEmail,
           hasOpenAIProxy,
           selectedApps
@@ -106,6 +110,8 @@ export async function POST(request: NextRequest) {
           await createUser(userId, {
             email: customerEmail,
             name: customerName,
+            applicantType: (applicantType as 'individual' | 'corporate') || 'individual',
+            companyName: companyName || undefined,
             passwordSetupRequired: true, // 自動作成のためパスワード設定が必要
             createdAt: new Date().toISOString(),
           });
@@ -128,6 +134,8 @@ export async function POST(request: NextRequest) {
           contractPdfUrl: `https://example.com/contracts/${userId}.pdf`, // 仮のURL
           hasOpenAIProxy: hasOpenAIProxy === 'true',
           selectedApps: selectedApps ? selectedApps.split(',') : [],
+          applicantType: (applicantType as 'individual' | 'corporate') || 'individual',
+          companyName: companyName || undefined,
           passwordSetupRequired: !existingUser, // 新規作成の場合はパスワード設定が必要
           customerEmail: customerEmail, // メールアドレスでの検索用
           createdAt: new Date().toISOString(),
