@@ -18,6 +18,7 @@ export default function Home() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [openAccordion, setOpenAccordion] = useState<string | null>(null)
+  const [iframeErrors, setIframeErrors] = useState<{[key: string]: boolean}>({})
 
   // クライアントサイドでのマウント完了を待つ
   useEffect(() => {
@@ -50,6 +51,34 @@ export default function Home() {
   const toggleAccordion = (appId: string) => {
     setOpenAccordion(openAccordion === appId ? null : appId)
   }
+
+  const handleIframeError = (appId: string) => {
+    console.error(`iframe load error for app: ${appId}`)
+    setIframeErrors(prev => ({ ...prev, [appId]: true }))
+  }
+
+  const handleIframeLoad = (appId: string) => {
+    console.log(`iframe loaded successfully for ${appId}`)
+    // 読み込み中表示を隠す
+    const loadingElement = document.getElementById(`loading-${appId}`)
+    if (loadingElement) {
+      loadingElement.style.display = 'none'
+    }
+  }
+
+  // タイムアウト機能: 10秒後にエラー状態にする
+  useEffect(() => {
+    if (openAccordion) {
+      const timer = setTimeout(() => {
+        const loadingElement = document.getElementById(`loading-${openAccordion}`)
+        if (loadingElement && loadingElement.style.display !== 'none') {
+          handleIframeError(openAccordion)
+        }
+      }, 10000) // 10秒
+
+      return () => clearTimeout(timer)
+    }
+  }, [openAccordion])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,8 +200,6 @@ export default function Home() {
               必要事項をご入力ください
             </p>
           </div>
-
-
 
           {/* ログインユーザーへの案内 */}
           {mounted && user && (
@@ -308,17 +335,78 @@ export default function Home() {
                           border: '1px solid var(--gray-300)',
                           borderRadius: 'var(--radius-md)',
                           background: 'white',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          position: 'relative'
                         }}>
-                          <iframe
-                            src={app.difyUrl}
-                            style={{
-                              width: '100%',
+                          {iframeErrors[app.id] ? (
+                            // エラー時のフォールバック表示
+                            <div style={{
                               height: '100%',
-                              border: 'none'
-                            }}
-                            allow="microphone"
-                          />
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexDirection: 'column',
+                              gap: '1rem',
+                              background: 'var(--gray-50)'
+                            }}>
+                              <div style={{ fontSize: '3rem' }}>⚠️</div>
+                              <h4 style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--gray-800)', marginBottom: '0.5rem' }}>
+                                デモの読み込みに失敗しました
+                              </h4>
+                              <p style={{ color: 'var(--gray-600)', textAlign: 'center', marginBottom: '1rem' }}>
+                                ネットワークの問題、またはサイトのセキュリティ設定により<br />
+                                埋め込み表示ができません
+                              </p>
+                              <a
+                                href={app.difyUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-primary"
+                                style={{ fontSize: '0.875rem' }}
+                              >
+                                🔗 新しいタブで開く
+                              </a>
+                            </div>
+                          ) : (
+                            <>
+                              <iframe
+                                src={app.difyUrl}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  border: 'none'
+                                }}
+                                allow="microphone"
+                                sandbox="allow-scripts allow-same-origin allow-forms"
+                                onLoad={() => handleIframeLoad(app.id)}
+                                onError={() => handleIframeError(app.id)}
+                                title={`${app.name} デモ`}
+                                loading="lazy"
+                              />
+                              {/* 読み込み中表示 */}
+                              <div 
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  background: 'var(--gray-50)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexDirection: 'column',
+                                  gap: '1rem',
+                                  zIndex: 1,
+                                  pointerEvents: 'none'
+                                }}
+                                id={`loading-${app.id}`}
+                              >
+                                <div className="loading-spinner"></div>
+                                <p style={{ color: 'var(--gray-600)' }}>デモを読み込んでいます...</p>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div style={{
@@ -344,7 +432,7 @@ export default function Home() {
                             className="btn btn-primary"
                             style={{ fontSize: '0.875rem' }}
                           >
-                            フルバージョンを確認
+                            🔗 新しいタブで確認
                           </a>
                         </div>
                       )}
