@@ -120,7 +120,10 @@ export async function POST(request: NextRequest) {
           planName: planId === 'basic' ? '基本プラン' : planId,
           status: 'active' as const,
           startDate: new Date().toISOString(),
-          stripeCustomerId: fullSession.customer as string,
+          stripeCustomerId:
+            typeof fullSession.customer === 'string'
+              ? fullSession.customer
+              : (fullSession.customer as any)?.id,
           stripeSubscriptionId: (fullSession.subscription as Stripe.Subscription)?.id,
           contractPdfUrl: `https://example.com/contracts/${userId}.pdf`, // 仮のURL
           hasOpenAIProxy: hasOpenAIProxy === 'true',
