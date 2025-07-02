@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isDemoMode } from '@/lib/stripe';
-import { createContract, createUser, getUserByEmail } from '@/lib/firestore';
+import { createContract, createUser, getUserByEmail, getContractById, updateContract } from '@/lib/firestore';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -65,25 +65,72 @@ export async function POST(request: NextRequest) {
         console.log('📋 Full session metadata:', fullSession.metadata);
 
         const { 
+          type,
           planId, 
           applicantType,
           customerName,
           companyName, 
           customerEmail, 
           hasOpenAIProxy, 
-          selectedApps 
+          selectedApps,
+          contractId,
+          addedApps
         } = fullSession.metadata || {};
         
         console.log('🏷️ Extracted metadata:', {
+          type,
           planId,
           applicantType,
           customerName,
           companyName,
           customerEmail,
           hasOpenAIProxy,
-          selectedApps
+          selectedApps,
+          contractId,
+          addedApps
         });
         
+        // アプリ追加の場合の処理
+        if (type === 'app_addition') {
+          console.log('➕ Processing app addition');
+          
+          if (!contractId || !addedApps) {
+            console.error('❌ Missing contractId or addedApps in app addition:', {
+              contractId: !!contractId,
+              addedApps: !!addedApps
+            });
+            break;
+          }
+
+          // 既存契約を取得
+          const existingContract = await getContractById(contractId);
+          if (!existingContract) {
+            console.error('❌ Contract not found:', contractId);
+            break;
+          }
+
+          // 新しいアプリリストを作成
+          const currentApps = existingContract.selectedApps || [];
+          const newApps = JSON.parse(addedApps);
+          const updatedApps = [...currentApps, ...newApps];
+
+          // 契約を更新
+          await updateContract(contractId, {
+            selectedApps: updatedApps,
+            stripeSubscriptionId: (fullSession.subscription as Stripe.Subscription)?.id,
+            updatedAt: new Date().toISOString(),
+          });
+
+          console.log('✅ Apps added to contract:', {
+            contractId,
+            addedApps: newApps,
+            totalApps: updatedApps.length
+          });
+          
+          break;
+        }
+        
+        // 新規契約の場合の処理
         if (!planId || !customerName || !customerEmail) {
           console.error('❌ Missing metadata in checkout session:', {
             planId: !!planId,

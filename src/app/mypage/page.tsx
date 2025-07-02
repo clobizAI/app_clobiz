@@ -51,7 +51,7 @@ export default function MyPage() {
   }
 
   const handleAddAppRequest = () => {
-    alert('アプリ追加申請機能は準備中です。サポートまでお問い合わせください。')
+    router.push('/add-app')
   }
 
   // 認証中の場合

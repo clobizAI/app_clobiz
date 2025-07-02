@@ -29,6 +29,9 @@ service cloud.firestore {
         request.auth.token.email == resource.data.customerEmail
       );
       
+      // メールバリデーションAPI用：サーバーサイドからの読み取りを許可
+      allow read: if true;
+      
       // 契約の作成は認証済みユーザーまたはWebhook経由での作成を許可
       allow create: if true;
       

@@ -128,4 +128,17 @@ export const getUserContractsByEmail = async (email: string): Promise<Contract[]
     console.error('Error getting user contracts by email:', error);
     throw error;
   }
+};
+
+export const getContractById = async (contractId: string): Promise<Contract | null> => {
+  try {
+    const contractDoc = await getDoc(doc(db, 'contracts', contractId));
+    if (contractDoc.exists()) {
+      return contractDoc.data() as Contract;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting contract by ID:', error);
+    throw error;
+  }
 }; 
