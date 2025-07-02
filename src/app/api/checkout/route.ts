@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, plans, businessApps, openaiProxyService, isDemoMode } from '@/lib/stripe';
+import { stripe, plans, businessApps, openaiProxyService } from '@/lib/stripe';
 import { ApplicationForm } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -33,32 +33,9 @@ export async function POST(request: NextRequest) {
       selectedPlan,
       totalPrice 
     });
-    console.log('Demo mode:', isDemoMode);
 
-    // デモモードの場合はダミーURLを返す
-    if (isDemoMode) {
-      console.log('Running in demo mode - redirecting to success page');
-      const params = new URLSearchParams({
-        session_id: `cs_test_demo_${Date.now()}`,
-        demo: 'true',
-        plan: planId,
-        applicantType: applicantType,
-        email: email,
-        name: name,
-        companyName: companyName || '',
-        hasOpenAIProxy: hasOpenAIProxy.toString(),
-        selectedApps: selectedApps.join(',')
-      });
-      
-      return NextResponse.json({ 
-        url: `/success?${params.toString()}` 
-      });
-    }
 
-    // 実際のStripe Checkoutセッションを作成
-    if (!stripe) {
-      throw new Error('Stripe not initialized');
-    }
+    // Stripe Checkoutセッションを作成
 
     // ベースURLを環境変数から取得（必須）
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;

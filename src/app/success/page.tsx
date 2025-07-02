@@ -14,7 +14,6 @@ function SuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
-  const isDemo = searchParams.get('demo') === 'true'
   const planId = searchParams.get('plan')
   const applicantType = searchParams.get('applicantType') || 'corporate'
   const email = searchParams.get('email')
@@ -36,7 +35,7 @@ function SuccessContent() {
 
   useEffect(() => {
     if (sessionId) {
-      // デモモードまたは実際のセッション情報を設定
+      // セッション情報を設定
       setTimeout(() => {
         const basePrice = 800
         const proxyPrice = hasOpenAIProxy ? openaiProxyService.price : 0
@@ -52,15 +51,14 @@ function SuccessContent() {
           plan_id: planId || 'basic',
           amount_total: totalPrice,
           has_openai_proxy: hasOpenAIProxy,
-          selected_apps: selectedApps,
-          is_demo: isDemo
+          selected_apps: selectedApps
         })
         setLoading(false)
       }, 1000)
     } else {
       setLoading(false)
     }
-  }, [sessionId, isDemo, planId, applicantType, email, name, companyName, hasOpenAIProxy, selectedApps])
+  }, [sessionId, planId, applicantType, email, name, companyName, hasOpenAIProxy, selectedApps])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -251,14 +249,7 @@ function SuccessContent() {
               HK${sessionData?.amount_total?.toLocaleString()}/月
             </span>
           </div>
-          {sessionData?.is_demo && (
-            <div className="detail-item">
-              <span className="detail-label">🔧 モード</span>
-              <span className="detail-value" style={{ color: 'var(--warning-600)' }}>
-                デモモード
-              </span>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -391,32 +382,7 @@ function SuccessContent() {
         </form>
       </div>
 
-      {sessionData?.is_demo && (
-        <div style={{ 
-          background: 'var(--warning-50)', 
-          border: '1px solid var(--warning-200)', 
-          borderRadius: 'var(--radius-lg)', 
-          padding: '1.5rem',
-          margin: '2rem 0',
-          display: 'flex',
-          alignItems: 'flex-start'
-        }}>
-          <span style={{ fontSize: '1.5rem', marginRight: '1rem' }}>⚠️</span>
-          <div>
-            <h3 style={{ 
-              fontSize: '1rem', 
-              fontWeight: '600', 
-              color: 'var(--warning-800)', 
-              marginBottom: '0.5rem' 
-            }}>
-              デモモードでの動作
-            </h3>
-            <p style={{ color: 'var(--warning-700)', fontSize: '0.95rem' }}>
-              これはデモ環境での動作です。実際のStripe決済は行われていません。本格運用時には適切なAPIキーを設定してください。
-            </p>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 }

@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, isDemoMode } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe';
 import { createContract, createUser, getUserByEmail, getContractById, updateContract } from '@/lib/firestore';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   console.log('🔄 Webhook received');
   
-  // Stripeが設定されていない場合はwebhookを無効化
-  if (isDemoMode || !stripe) {
-    console.log('Stripe demo mode: Webhook skipped');
-    return NextResponse.json({ received: true, demo: true });
-  }
+
 
   const sig = request.headers.get('stripe-signature') as string;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
@@ -55,7 +51,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log('🔍 Retrieving full session details...');
         // セッションの詳細情報を取得
-        const fullSession = await stripe!.checkout.sessions.retrieve(
+        const fullSession = await stripe.checkout.sessions.retrieve(
           session.id,
           {
             expand: ['customer', 'subscription'],

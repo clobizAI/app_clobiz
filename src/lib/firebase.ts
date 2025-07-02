@@ -11,8 +11,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!
 };
 
-// Firebase デモモードを削除（常に実際のFirebaseを使用）
-export const isFirebaseDemo = false;
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

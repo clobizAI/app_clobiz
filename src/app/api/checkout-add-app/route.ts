@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, businessApps, isDemoMode } from '@/lib/stripe';
+import { stripe, businessApps } from '@/lib/stripe';
 import { getContractById } from '@/lib/firestore';
 
 export async function POST(request: NextRequest) {
@@ -53,26 +53,9 @@ export async function POST(request: NextRequest) {
     // 追加料金を計算（各アプリHK$400）
     const totalAddPrice = newApps.length * 400;
 
-    // デモモードの場合はダミーURLを返す
-    if (isDemoMode) {
-      console.log('Running in demo mode - redirecting to success page');
-      const params = new URLSearchParams({
-        session_id: `cs_test_demo_${Date.now()}`,
-        demo: 'true',
-        type: 'app_addition',
-        contractId: contractId,
-        addedApps: JSON.stringify(newApps)
-      });
-      
-      return NextResponse.json({ 
-        url: `/success?${params.toString()}` 
-      });
-    }
 
-    // 実際のStripe Checkoutセッションを作成
-    if (!stripe) {
-      throw new Error('Stripe not initialized');
-    }
+
+    // Stripe Checkoutセッションを作成
 
     // ベースURLを環境変数から取得（必須）
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;

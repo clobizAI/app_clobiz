@@ -3,11 +3,8 @@ import Stripe from 'stripe';
 // 開発時はダミーキーを使用
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_development';
 
-// 開発用フラグ（実際の有効なStripeキーがない場合はデモモード）
-export const isDemoMode = false; // テスト環境を使用
-
-// デモモードではnull、本番では実際のStripeインスタンス
-export const stripe = isDemoMode ? null : new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
+// Stripeインスタンスを作成
+export const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
 
 // 業務アプリ定義（各アプリ400ドル/月のサブスクリプション）
 export const businessApps = [
