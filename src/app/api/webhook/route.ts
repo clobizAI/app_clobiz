@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
           // 新しいアプリリストを作成
           const currentApps = existingContract.selectedApps || [];
-          const newApps = JSON.parse(addedApps);
+          const newApps = addedApps.split(',');
           const updatedApps = [...currentApps, ...newApps];
 
           // 契約を更新

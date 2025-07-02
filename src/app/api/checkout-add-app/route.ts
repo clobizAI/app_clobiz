@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         type: 'app_addition',
         contractId: contractId,
-        addedApps: JSON.stringify(newApps),
+        addedApps: newApps.join(','),
       },
-      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/add-app/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/add-app`,
     });
 

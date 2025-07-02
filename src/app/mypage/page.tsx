@@ -43,6 +43,30 @@ export default function MyPage() {
     }
   }, [user, authLoading, router, loadUserContracts])
 
+  // ページがフォーカスされたときに常に最新データを取得
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user && !authLoading) {
+        loadUserContracts()
+      }
+    }
+
+    const handleFocus = () => {
+      if (user && !authLoading) {
+        loadUserContracts()
+      }
+    }
+
+    // ページがフォーカスされたときとvisibilityが変更されたときに再取得
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user, authLoading, loadUserContracts])
+
   const handleAppOpen = (appId: string) => {
     const app = businessApps.find(a => a.id === appId)
     if (app) {
