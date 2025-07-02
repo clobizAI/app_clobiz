@@ -74,10 +74,11 @@ export async function POST(request: NextRequest) {
       throw new Error('Stripe not initialized');
     }
 
-    // ベースURLを決定（元のコードと同じ）
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
-      ? process.env.NEXT_PUBLIC_SITE_URL
-      : 'https://app-clobiz.vercel.app';
+    // ベースURLを環境変数から取得（必須）
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (!baseUrl) {
+      throw new Error('NEXT_PUBLIC_SITE_URL environment variable is required');
+    }
 
     console.log('Using base URL for redirects:', baseUrl);
 

@@ -59,6 +59,9 @@ npm install
 `.env.local`ファイルを作成し、以下の変数を設定してください：
 
 ```env
+# Site Configuration（必須）
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
 # Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
@@ -72,10 +75,14 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
-# Next.js Configuration
+# NextAuth Configuration
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your_nextauth_secret
 ```
+
+**重要**: `NEXT_PUBLIC_SITE_URL`は必須環境変数です。未設定の場合はAPI呼び出し時にエラーが発生します。
+- 開発環境: `http://localhost:3000`
+- 本番環境: `https://your-domain.com`
 
 ### 3. Firebase プロジェクトの設定
 
