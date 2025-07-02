@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { plans, businessApps, openaiProxyService } from '@/lib/stripe'
-import { ApplicationForm } from '@/types'
+import { ApplicationForm, Contract } from '@/types'
 import { useAuth } from '@/components/AuthProvider'
+import { getUserContractsByEmail } from '@/lib/firestore'
 import Link from 'next/link'
 
 export default function Home() {
@@ -21,6 +22,17 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [openAccordion, setOpenAccordion] = useState<string | null>(null)
   const [iframeErrors, setIframeErrors] = useState<{[key: string]: boolean}>({})
+  const [emailValidation, setEmailValidation] = useState<{
+    isChecking: boolean
+    exists: boolean | null
+    message: string
+    error: string
+  }>({
+    isChecking: false,
+    exists: null,
+    message: '',
+    error: ''
+  })
 
   // クライアントサイドでのマウント完了を待つ
   useEffect(() => {
@@ -37,6 +49,63 @@ export default function Home() {
       }))
     }
   }, [user, formData.name, formData.email])
+
+  // メールアドレスバリデーション機能
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailValidation({
+        isChecking: false,
+        exists: null,
+        message: '',
+        error: ''
+      })
+      return
+    }
+
+    setEmailValidation(prev => ({ ...prev, isChecking: true, error: '' }))
+
+    try {
+      const response = await fetch('/api/check-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'チェックに失敗しました')
+      }
+
+      setEmailValidation({
+        isChecking: false,
+        exists: data.exists,
+        message: data.message,
+        error: ''
+      })
+    } catch (error) {
+      console.error('Email check error:', error)
+      setEmailValidation({
+        isChecking: false,
+        exists: null,
+        message: '',
+        error: error instanceof Error ? error.message : 'エラーが発生しました'
+      })
+    }
+  }
+
+  // メールアドレス入力のデバウンス処理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.email && !user) { // 未ログインユーザーのみチェック
+        checkEmailExists(formData.email)
+      }
+    }, 1000) // 1秒後にチェック
+
+    return () => clearTimeout(timer)
+  }, [formData.email, user])
 
   // 料金計算：基本800 + アプリ×400 + API代行200
   const selectedPlan = plans.find(plan => plan.id === formData.planId) || plans[0]
@@ -123,6 +192,82 @@ export default function Home() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // ログイン済みユーザーへの表示
+  if (mounted && user) {
+    return (
+      <div className="page-container fade-in">
+        <div className="page-header">
+          <h1 className="page-title">
+            🎉 ご利用ありがとうございます！
+          </h1>
+          <p className="page-subtitle">
+            既にアカウントをお持ちです。マイページでサービスをご利用ください
+          </p>
+        </div>
+
+        {/* ログイン済みユーザー向けの案内 */}
+        <div style={{ maxWidth: '600px', margin: '0 auto 3rem' }}>
+          <div className="plan-card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <div style={{ marginBottom: '2rem' }}>
+              <span style={{ fontSize: '4rem', display: 'block', marginBottom: '1rem' }}>👤</span>
+              <h2 style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: '600', 
+                color: 'var(--gray-900)', 
+                marginBottom: '0.5rem' 
+              }}>
+                {user.displayName || user.email} さん
+              </h2>
+              <p style={{ color: 'var(--gray-600)', fontSize: '1rem', marginBottom: '2rem' }}>
+                既にログインされています
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+              <Link href="/mypage" className="btn btn-primary" style={{ minWidth: '200px' }}>
+                📊 マイページで契約状況を確認
+              </Link>
+              
+              <div style={{ 
+                padding: '1.5rem', 
+                background: 'var(--primary-50)', 
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--primary-200)',
+                width: '100%',
+                maxWidth: '400px'
+              }}>
+                <h3 style={{ 
+                  fontSize: '1.125rem', 
+                  fontWeight: '600', 
+                  color: 'var(--primary-800)', 
+                  marginBottom: '0.75rem',
+                  textAlign: 'center'
+                }}>
+                  🎯 アプリ追加をご希望の場合
+                </h3>
+                <p style={{ 
+                  color: 'var(--primary-700)', 
+                  fontSize: '0.875rem', 
+                  marginBottom: '1rem',
+                  textAlign: 'center'
+                }}>
+                  新しいAI業務アプリの追加は<br />マイページから申請できます
+                </p>
+                <Link 
+                  href="/mypage" 
+                  className="btn btn-secondary"
+                  style={{ width: '100%', fontSize: '0.875rem' }}
+                >
+                  ➕ アプリ追加申請へ
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -317,6 +462,68 @@ export default function Home() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
+            
+            {/* メールバリデーション結果表示 */}
+            {formData.email && (
+              <div style={{ marginTop: '0.5rem' }}>
+                {emailValidation.isChecking && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    color: 'var(--gray-600)',
+                    fontSize: '0.875rem'
+                  }}>
+                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⚪</span>
+                    メールアドレスを確認しています...
+                  </div>
+                )}
+                
+                {!emailValidation.isChecking && emailValidation.exists === false && (
+                  <div style={{
+                    background: 'var(--success-50)',
+                    border: '1px solid var(--success-200)',
+                    color: 'var(--success-800)',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem'
+                  }}>
+                    ✅ {emailValidation.message}
+                  </div>
+                )}
+                
+                {!emailValidation.isChecking && emailValidation.exists === true && (
+                  <div style={{
+                    background: 'var(--red-50)',
+                    border: '1px solid var(--red-200)',
+                    color: 'var(--red-800)',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem'
+                  }}>
+                    ❌ {emailValidation.message}
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <a href="/login" style={{ color: 'var(--red-600)', textDecoration: 'underline' }}>
+                        こちらからログインしてください
+                      </a>
+                    </div>
+                  </div>
+                )}
+                
+                {!emailValidation.isChecking && emailValidation.error && (
+                  <div style={{
+                    background: 'var(--red-50)',
+                    border: '1px solid var(--red-200)',
+                    color: 'var(--red-800)',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem'
+                  }}>
+                    ⚠️ {emailValidation.error}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* OpenAI API代行オプション */}
@@ -606,13 +813,18 @@ export default function Home() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || emailValidation.exists === true}
             className="btn btn-primary submit-btn"
+            style={emailValidation.exists === true ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
           >
             {isLoading ? (
               <>
                 <div className="loading-spinner" style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.5rem' }}></div>
                 処理中...
+              </>
+            ) : emailValidation.exists === true ? (
+              <>
+                ❌ このメールアドレスは既にご契約済みです
               </>
             ) : (
               <>
@@ -639,6 +851,13 @@ export default function Home() {
           </div>
         </form>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 } 

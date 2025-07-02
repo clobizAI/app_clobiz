@@ -6,9 +6,9 @@ import Stripe from 'stripe';
 export async function POST(request: NextRequest) {
   console.log('🔄 Webhook received');
   
-  // デモモードの場合はwebhookを無効化
+  // Stripeが設定されていない場合はwebhookを無効化
   if (isDemoMode || !stripe) {
-    console.log('Demo mode: Webhook skipped');
+    console.log('Stripe demo mode: Webhook skipped');
     return NextResponse.json({ received: true, demo: true });
   }
 

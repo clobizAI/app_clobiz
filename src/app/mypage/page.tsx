@@ -96,6 +96,12 @@ export default function MyPage() {
       <div className="user-card">
         <h2 className="user-card-title">👤 ユーザー情報</h2>
         <div className="user-grid">
+          {activeContract?.companyName && (
+            <div className="user-field">
+              <span className="user-label">会社名</span>
+              <span className="user-value">{activeContract.companyName}</span>
+            </div>
+          )}
           <div className="user-field">
             <span className="user-label">お名前</span>
             <span className="user-value">{user.displayName || 'ユーザー'}</span>
@@ -175,6 +181,12 @@ export default function MyPage() {
                 </div>
 
                 <div className="contract-details">
+                  {contract.companyName && (
+                    <div className="contract-field">
+                      <span className="contract-label">会社名</span>
+                      <span className="contract-value">{contract.companyName}</span>
+                    </div>
+                  )}
                   <div className="contract-field">
                     <span className="contract-label">OpenAI API代行の有無</span>
                     <span className="contract-value" style={{

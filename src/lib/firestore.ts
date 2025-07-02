@@ -4,11 +4,6 @@ import { Contract, User } from '@/types';
 
 // ユーザー操作
 export const createUser = async (userId: string, userData: Omit<User, 'uid'>) => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: User creation skipped', { userId, userData });
-    return;
-  }
-  
   try {
     await setDoc(doc(db, 'users', userId), {
       ...userData,
@@ -21,11 +16,6 @@ export const createUser = async (userId: string, userData: Omit<User, 'uid'>) =>
 };
 
 export const getUser = async (userId: string): Promise<User | null> => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: User retrieval skipped', { userId });
-    return null;
-  }
-  
   try {
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (userDoc.exists()) {
@@ -39,11 +29,6 @@ export const getUser = async (userId: string): Promise<User | null> => {
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: User retrieval by email skipped', { email });
-    return null;
-  }
-  
   try {
     const q = query(
       collection(db, 'users'),
@@ -64,11 +49,6 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 
 // 契約操作
 export const createContract = async (contractData: Omit<Contract, 'id'>) => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: Contract creation skipped', { contractData });
-    return 'demo-contract-id';
-  }
-  
   try {
     const contractsRef = collection(db, 'contracts');
     const contractDoc = doc(contractsRef);
@@ -86,11 +66,6 @@ export const createContract = async (contractData: Omit<Contract, 'id'>) => {
 };
 
 export const updateContract = async (contractId: string, updates: Partial<Contract>) => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: Contract update skipped', { contractId, updates });
-    return;
-  }
-  
   try {
     await updateDoc(doc(db, 'contracts', contractId), {
       ...updates,
@@ -103,11 +78,6 @@ export const updateContract = async (contractId: string, updates: Partial<Contra
 };
 
 export const updateUser = async (userId: string, updates: Partial<User>) => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: User update skipped', { userId, updates });
-    return;
-  }
-  
   try {
     await updateDoc(doc(db, 'users', userId), {
       ...updates,
@@ -119,11 +89,6 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
 };
 
 export const getUserContracts = async (userId: string): Promise<Contract[]> => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: Contract retrieval skipped', { userId });
-    return [];
-  }
-  
   try {
     const q = query(
       collection(db, 'contracts'),
@@ -145,28 +110,6 @@ export const getUserContracts = async (userId: string): Promise<Contract[]> => {
 };
 
 export const getUserContractsByEmail = async (email: string): Promise<Contract[]> => {
-  if (isFirebaseDemo) {
-    console.log('Demo mode: Contract retrieval by email skipped', { email });
-    // デモ用のダミーデータを返す
-    return [
-      {
-        id: 'contract-demo',
-        userId: 'demo-user',
-        planId: 'basic',
-        planName: '基本プラン',
-        status: 'active',
-        startDate: '2025-06-01T00:00:00Z',
-        stripeCustomerId: 'cus_demo',
-        stripeSubscriptionId: 'sub_demo',
-        contractPdfUrl: 'https://example.com/contracts/demo.pdf',
-        hasOpenAIProxy: true,
-        selectedApps: ['faq-chat-ai', 'document-analyzer', 'email-assistant'],
-        createdAt: '2025-06-01T00:00:00Z',
-        updatedAt: '2025-06-01T00:00:00Z',
-      },
-    ];
-  }
-  
   try {
     const q = query(
       collection(db, 'contracts'),
