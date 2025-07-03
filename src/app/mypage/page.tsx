@@ -208,50 +208,123 @@ export default function MyPage() {
                   </div>
                 </div>
 
-                <div className="contract-details">
-                  {contract.companyName && (
-                    <div className="contract-field">
-                      <span className="contract-label">会社名</span>
-                      <span className="contract-value">{contract.companyName}</span>
-                    </div>
-                  )}
-                  <div className="contract-field">
-                    <span className="contract-label">OpenAI API代行の有無</span>
-                    <span className="contract-value" style={{
-                      background: contract.hasOpenAIProxy ? 'var(--success-100)' : 'var(--gray-100)',
-                      color: contract.hasOpenAIProxy ? 'var(--success-800)' : 'var(--gray-600)',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.875rem',
-                      fontWeight: '600'
-                    }}>
-                      {contract.hasOpenAIProxy ? '✅ あり（+HK$200/月）' : '❌ なし'}
-                    </span>
-                  </div>
-                  <div className="contract-field">
-                    <span className="contract-label">契約ID</span>
-                    <span className="contract-value">{contract.id}</span>
-                  </div>
-                  {contract.stripeCustomerId && (
-                    <div className="contract-field">
-                      <span className="contract-label">Stripe顧客ID</span>
-                      <span className="contract-value">{contract.stripeCustomerId}</span>
-                    </div>
-                  )}
-                </div>
+
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* API代行セクション */}
+      {activeContract && (
+        <div className="contracts-card">
+          <div className="contracts-header">
+            <h2 className="contracts-title">🤖 API代行</h2>
+          </div>
+          <div style={{ padding: '1rem' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '1rem'
+            }}>
+              {/* OpenAI */}
+              <div style={{
+                padding: '1rem',
+                background: activeContract.hasOpenAIProxy ? 'var(--success-50)' : 'var(--gray-50)',
+                border: `1px solid ${activeContract.hasOpenAIProxy ? 'var(--success-200)' : 'var(--gray-200)'}`,
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'center'
+              }}>
+                <h4 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: 'var(--gray-900)', 
+                  marginBottom: '0.5rem' 
+                }}>
+                  OpenAI<br/>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '400' }}>
+                    {activeContract.hasOpenAIProxy ? '✅ 利用中' : '❌ 未利用'}
+                  </span>
+                </h4>
+                <p style={{ 
+                  color: 'var(--gray-600)', 
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  margin: '0'
+                }}>
+                  HK$200/月
+                </p>
+              </div>
+
+              {/* Anthropic */}
+              <div style={{
+                padding: '1rem',
+                background: 'var(--gray-50)', // 仮で未利用状態
+                border: '1px solid var(--gray-200)',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'center'
+              }}>
+                <h4 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: 'var(--gray-900)', 
+                  marginBottom: '0.5rem' 
+                }}>
+                  Anthropic<br/>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '400' }}>
+                    ❌ 未利用
+                  </span>
+                </h4>
+                <p style={{ 
+                  color: 'var(--gray-600)', 
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  margin: '0'
+                }}>
+                  HK$200/月
+                </p>
+              </div>
+
+              {/* Google */}
+              <div style={{
+                padding: '1rem',
+                background: 'var(--gray-50)', // 仮で未利用状態
+                border: '1px solid var(--gray-200)',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'center'
+              }}>
+                <h4 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: 'var(--gray-900)', 
+                  marginBottom: '0.5rem' 
+                }}>
+                  Google<br/>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '400' }}>
+                    ❌ 未利用
+                  </span>
+                </h4>
+                <p style={{ 
+                  color: 'var(--gray-600)', 
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  margin: '0'
+                }}>
+                  HK$200/月
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 容量プランセクション */}
       {activeContract && (
         <div className="contracts-card">
           <div className="contracts-header">
-            <h2 className="contracts-title">💾 データストレージ容量</h2>
+            <h2 className="contracts-title">💾 データストレージ</h2>
           </div>
-          <div style={{ padding: '1.5rem' }}>
+          <div style={{ padding: '1rem' }}>
             {(() => {
               const currentStoragePlan = activeContract.currentStoragePlan || '5gb'
               const pendingStoragePlan = activeContract.pendingStoragePlan
@@ -264,28 +337,22 @@ export default function MyPage() {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '1.5rem',
+                    justifyContent: 'space-between',
+                    padding: '1rem',
                     background: 'var(--success-50)',
                     border: '1px solid var(--success-200)',
-                    borderRadius: 'var(--radius-lg)',
-                    marginBottom: '1rem'
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '0.75rem'
                   }}>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ 
                         fontSize: '1.125rem', 
                         fontWeight: '600', 
                         color: 'var(--gray-900)', 
-                        marginBottom: '0.5rem' 
+                        marginBottom: '0.75rem' 
                       }}>
                         📊 現在の容量プラン: {currentPlan?.name}
                       </h4>
-                      <p style={{ 
-                        color: 'var(--gray-600)', 
-                        fontSize: '0.875rem',
-                        marginBottom: '0.75rem' 
-                      }}>
-                        {currentPlan?.storageGB}GB利用可能
-                      </p>
                       <span style={{
                         background: currentPlan?.price === 0 ? 'var(--success-100)' : 'var(--blue-100)',
                         color: currentPlan?.price === 0 ? 'var(--success-800)' : 'var(--blue-800)',
@@ -294,8 +361,31 @@ export default function MyPage() {
                         fontSize: '0.75rem',
                         fontWeight: '600'
                       }}>
-                        {currentPlan?.price === 0 ? '基本プランに含まれる' : `HK$${currentPlan?.price}/月`}
+                        {currentPlan?.price === 0 ? '基本プランに含まれています' : `HK$${currentPlan?.price}/月`}
                       </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {!pendingPlan ? (
+                        <button
+                          onClick={handleStorageUpgradeRequest}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.875rem' }}
+                        >
+                          💾 容量変更を申請
+                        </button>
+                      ) : (
+                        <div style={{ 
+                          padding: '0.5rem 1rem',
+                          background: 'var(--warning-100)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'var(--warning-800)',
+                          textAlign: 'center'
+                        }}>
+                          ⏳ 申請済み
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -304,11 +394,11 @@ export default function MyPage() {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '1.5rem',
+                      padding: '1rem',
                       background: 'var(--warning-50)',
                       border: '1px solid var(--warning-200)',
-                      borderRadius: 'var(--radius-lg)',
-                      marginBottom: '1rem'
+                      borderRadius: 'var(--radius-md)',
+                      marginBottom: '0.75rem'
                     }}>
                       <div style={{ flex: 1 }}>
                         <h4 style={{ 
@@ -324,7 +414,7 @@ export default function MyPage() {
                           fontSize: '0.875rem',
                           marginBottom: '0.75rem' 
                         }}>
-                          翌月1日から適用予定 - {pendingPlan.storageGB}GB利用可能
+                          翌月1日から適用予定
                         </p>
                         <span style={{
                           background: 'var(--warning-100)',
@@ -340,30 +430,7 @@ export default function MyPage() {
                     </div>
                   )}
 
-                  {/* 容量変更ボタン */}
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '1.5rem',
-                    background: 'var(--gray-50)',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px dashed var(--gray-300)'
-                  }}>
-                    <p style={{ color: 'var(--gray-600)', marginBottom: '1rem' }}>
-                      {pendingPlan 
-                        ? '容量変更申請が完了済みです。翌月1日から新しい容量でご利用いただけます。'
-                        : 'より多くのデータを保存したい場合は容量をアップグレードできます'
-                      }
-                    </p>
-                    {!pendingPlan && (
-                      <button
-                        onClick={handleStorageUpgradeRequest}
-                        className="btn btn-secondary"
-                        style={{ fontSize: '0.875rem' }}
-                      >
-                        💾 容量変更を申請
-                      </button>
-                    )}
-                  </div>
+
                 </div>
               )
             })()}
@@ -377,18 +444,18 @@ export default function MyPage() {
           <div className="contracts-header">
             <h2 className="contracts-title">🎯 ご利用中のAIアプリ</h2>
           </div>
-          <div style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'grid', gap: '1rem' }}>
+          <div style={{ padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
               {activeContract.selectedApps.map((appId) => {
                 const app = businessApps.find(a => a.id === appId)
                 return app ? (
                   <div key={appId} style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '1.5rem',
+                    padding: '1rem',
                     background: 'var(--primary-50)',
                     border: '1px solid var(--primary-200)',
-                    borderRadius: 'var(--radius-lg)',
+                    borderRadius: 'var(--radius-md)',
                     transition: 'all 0.2s ease'
                   }}>
                     <div style={{ flex: 1 }}>
@@ -432,10 +499,10 @@ export default function MyPage() {
             
             <div style={{ 
               textAlign: 'center', 
-              marginTop: '2rem',
-              padding: '1.5rem',
+              marginTop: '1rem',
+              padding: '1rem',
               background: 'var(--gray-50)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-md)',
               border: '1px dashed var(--gray-300)'
             }}>
               <p style={{ color: 'var(--gray-600)', marginBottom: '1rem' }}>

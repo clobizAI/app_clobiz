@@ -65,6 +65,7 @@ html, body {
   background: var(--gray-50);
   color: var(--gray-900);
   line-height: 1.6;
+  font-size: 75%; /* ベースフォントサイズを75%に調整 */
 }
 
 /* レイアウト */
@@ -118,7 +119,7 @@ html, body {
 
 .main {
   flex: 1;
-  padding: 2rem 0;
+  padding: 1.5rem 0;
 }
 
 /* ページコンテナ */
@@ -130,7 +131,7 @@ html, body {
 
 .page-header {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
 }
 
 .page-title {
@@ -155,15 +156,15 @@ html, body {
 .plans-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-  margin-bottom: 4rem;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .plan-card {
   background: white;
   border: 2px solid var(--gray-200);
   border-radius: var(--radius-xl);
-  padding: 2rem;
+  padding: 1.5rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -517,11 +518,11 @@ html, body {
 .mypage-container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 1.25rem 1rem;
 }
 
 .mypage-header {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .mypage-title {
@@ -539,10 +540,10 @@ html, body {
 .user-card {
   background: white;
   border-radius: var(--radius-xl);
-  padding: 2rem;
+  padding: 1.5rem;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--gray-200);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .user-card-title {
@@ -584,10 +585,11 @@ html, body {
   box-shadow: var(--shadow-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
+  margin-bottom: 1.5rem;
 }
 
 .contracts-header {
-  padding: 2rem 2rem 1rem;
+  padding: 1.5rem 1.5rem 0.75rem;
   border-bottom: 1px solid var(--gray-200);
 }
 
@@ -598,7 +600,7 @@ html, body {
 }
 
 .empty-state {
-  padding: 4rem 2rem;
+  padding: 2.5rem 1.5rem;
   text-align: center;
 }
 
@@ -622,7 +624,7 @@ html, body {
 }
 
 .contract-item {
-  padding: 2rem;
+  padding: 1.5rem;
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -715,7 +717,7 @@ html, body {
 }
 
 .actions-container {
-  margin-top: 3rem;
+  margin-top: 2rem;
   display: flex;
   justify-content: center;
   gap: 1rem;

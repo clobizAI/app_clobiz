@@ -185,8 +185,10 @@ export default function AddAppPage() {
   if (!activeContract) {
     return (
       <div className="page-container fade-in">
-        <div className="header-section">
-          <h1 className="header-title">➕ アプリ追加申請</h1>
+        <div className="page-header">
+          <h1 className="page-title">
+            <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'initial' }}>➕</span> アプリ追加申請
+          </h1>
         </div>
         
         <div className="form-container">
@@ -213,9 +215,11 @@ export default function AddAppPage() {
   if (availableApps.length === 0) {
     return (
       <div className="page-container fade-in">
-        <div className="header-section">
-          <h1 className="header-title">➕ アプリ追加申請</h1>
-          <p className="header-subtitle">追加可能なアプリを選択して申請できます</p>
+        <div className="page-header">
+          <h1 className="page-title">
+            <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'initial' }}>➕</span> アプリ追加申請
+          </h1>
+          <p className="page-subtitle">追加可能なアプリを選択して申請できます</p>
         </div>
         
         <div className="form-container">
@@ -242,9 +246,11 @@ export default function AddAppPage() {
 
   return (
     <div className="page-container fade-in">
-      <div className="header-section">
-        <h1 className="header-title">➕ アプリ追加申請</h1>
-        <p className="header-subtitle">追加したいビジネスアプリを選択してください</p>
+      <div className="page-header">
+        <h1 className="page-title">
+          <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'initial' }}>➕</span> アプリ追加申請
+        </h1>
+        <p className="page-subtitle">追加したいビジネスアプリを選択してください</p>
       </div>
 
       <div className="form-container">
@@ -487,20 +493,32 @@ export default function AddAppPage() {
             </div>
           )}
 
-          {/* アクションボタン */}
-          <div className="form-actions">
-            <Link href="/mypage" className="btn btn-secondary">
-              ← マイページに戻る
-            </Link>
+          {/* 申請ボタン */}
+          <div className="form-group" style={{ textAlign: 'center' }}>
             <button
               type="submit"
               disabled={selectedApps.length === 0 || isSubmitting}
-              className="btn btn-primary"
+              className="btn btn-primary submit-btn"
             >
-              {isSubmitting ? '申請中...' : `${selectedApps.length}個のアプリを申請する`}
+              {isSubmitting ? (
+                <>
+                  <span className="loading-spinner" style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }}></span>
+                  申請中...
+                </>
+              ) : (
+                <>
+                  ➕ {selectedApps.length}個のアプリを申請する
+                </>
+              )}
             </button>
           </div>
         </form>
+
+        <div className="actions-container">
+          <Link href="/mypage" className="btn btn-secondary">
+            ← マイページに戻る
+          </Link>
+        </div>
       </div>
     </div>
   )
