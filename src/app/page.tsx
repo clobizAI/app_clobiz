@@ -160,34 +160,21 @@ export default function Home() {
     try {
       console.log('Submitting form:', formData)
 
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      // URLパラメータを構築
+      const params = new URLSearchParams({
+        applicantType: formData.applicantType,
+        name: formData.name,
+        companyName: formData.companyName || '',
+        email: formData.email,
+        planId: formData.planId,
+        hasOpenAIProxy: formData.hasOpenAIProxy.toString(),
+        selectedApps: formData.selectedApps.join(',')
       })
 
-      console.log('Response status:', response.status)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('API Error:', errorData)
-        alert(`エラーが発生しました: ${errorData.error}`)
-        return
-      }
-
-      const data = await response.json()
-      console.log('Response data:', data)
-      
-      if (data.url) {
-        console.log('Redirecting to:', data.url)
-        window.location.href = data.url
-      } else {
-        alert('決済URLが取得できませんでした。')
-      }
+      // setup-passwordページにリダイレクト
+      window.location.href = `/setup-password?${params.toString()}`
     } catch (error) {
-      console.error('Checkout error:', error)
+      console.error('Form submission error:', error)
       alert('エラーが発生しました。もう一度お試しください。')
     } finally {
       setIsLoading(false)

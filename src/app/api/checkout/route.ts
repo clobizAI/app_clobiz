@@ -4,8 +4,16 @@ import { ApplicationForm } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: ApplicationForm = await request.json();
-    const { applicantType, name, companyName, email, planId, hasOpenAIProxy, selectedApps } = body;
+    const body = await request.json()
+    const { applicantType, name, companyName, email, planId, hasOpenAIProxy, selectedApps, userId } = body
+
+    // Firebase UIDの確認
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ユーザーIDが必要です' },
+        { status: 400 }
+      );
+    }
 
     // プラン情報を取得
     const selectedPlan = plans.find(plan => plan.id === planId);
@@ -31,11 +39,9 @@ export async function POST(request: NextRequest) {
       hasOpenAIProxy, 
       selectedApps: selectedApps.length,
       selectedPlan,
-      totalPrice 
+      totalPrice,
+      userId
     });
-
-
-    // Stripe Checkoutセッションを作成
 
     // ベースURLを環境変数から取得（必須）
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -44,6 +50,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Using base URL for redirects:', baseUrl);
+
+    // Stripe customerを事前作成
+    console.log('📝 Creating Stripe customer...');
+    const customer = await stripe.customers.create({
+      email: email,
+      name: name,
+      metadata: {
+        userId: userId,
+        applicantType: applicantType,
+        companyName: companyName || '',
+      },
+    });
+    console.log('✅ Created Stripe customer:', customer.id);
 
     // ライン アイテムを構築
     const lineItems = [
@@ -68,7 +87,7 @@ export async function POST(request: NextRequest) {
           currency: 'hkd',
           product_data: {
             name: `追加アプリ (${selectedApps.length}個)`,
-            description: selectedApps.map(appId => {
+            description: selectedApps.map((appId: string) => {
               const app = businessApps.find(app => app.id === appId);
               return app ? app.name : appId;
             }).join('、'),
@@ -97,8 +116,11 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
-      customer_email: email,
+      customer: customer.id,
       line_items: lineItems,
+      payment_intent_data: {
+        setup_future_usage: 'off_session',
+      },
       metadata: {
         planId: planId,
         applicantType: applicantType,
@@ -108,9 +130,7 @@ export async function POST(request: NextRequest) {
         hasOpenAIProxy: hasOpenAIProxy.toString(),
         selectedApps: selectedApps.join(','),
         totalPrice: totalPrice.toString(),
-        // 注意: 実際のFirebase UIDは別途認証チェックで取得する必要があります
-        // 現在はメールアドレスをキーとして使用
-        userKey: email,
+        userId: userId,
       },
       success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}&applicantType=${applicantType}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&companyName=${encodeURIComponent(companyName || '')}&hasOpenAIProxy=${hasOpenAIProxy}&selectedApps=${encodeURIComponent(selectedApps.join(','))}`,
       cancel_url: `${baseUrl}`,

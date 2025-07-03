@@ -3,19 +3,20 @@
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { businessApps, openaiProxyService } from '@/lib/stripe'
+import { businessApps, openaiProxyService, plans } from '@/lib/stripe'
 import { useAuth } from '@/components/AuthProvider'
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { updateUser, getUserByEmail, createUser } from '@/lib/firestore'
 
 function SuccessContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get('session_id')
+  
+  // URLパラメータを取得
+  const step = searchParams.get('step') || 'final'
+  const customerId = searchParams.get('customer_id')
+  const userId = searchParams.get('userId')
   const planId = searchParams.get('plan')
-  const applicantType = searchParams.get('applicantType') || 'corporate'
+  const applicantType = searchParams.get('applicantType')
   const email = searchParams.get('email')
   const name = searchParams.get('name')
   const companyName = searchParams.get('companyName')
@@ -23,366 +24,350 @@ function SuccessContent() {
   const selectedAppsParam = searchParams.get('selectedApps')
   
   const selectedApps = useMemo(() => {
-    return selectedAppsParam ? selectedAppsParam.split(',') : []
+    return selectedAppsParam ? selectedAppsParam.split(',').filter(app => app) : []
   }, [selectedAppsParam])
-  
-  const [sessionData, setSessionData] = useState<any>(null)
+
+  const [currentStep, setCurrentStep] = useState<'setup' | 'payment' | 'subscription' | 'completed' | 'error'>('setup')
   const [loading, setLoading] = useState(true)
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isPasswordSetting, setIsPasswordSetting] = useState(false)
   const [error, setError] = useState('')
+  const [paymentResult, setPaymentResult] = useState<any>(null)
+  const [subscriptionResult, setSubscriptionResult] = useState<any>(null)
+
+  const selectedPlan = plans.find(plan => plan.id === planId)
 
   useEffect(() => {
-    if (sessionId) {
-      // セッション情報を設定
-      setTimeout(() => {
-        const basePrice = 800
-        const proxyPrice = hasOpenAIProxy ? openaiProxyService.price : 0
-        const totalPrice = basePrice + proxyPrice
-
-        setSessionData({
-          id: sessionId,
-          payment_status: 'paid',
-          applicant_type: applicantType,
-          customer_email: email || 'customer@example.com',
-          customer_name: name || 'お客様',
-          company_name: companyName || '',
-          plan_id: planId || 'basic',
-          amount_total: totalPrice,
-          has_openai_proxy: hasOpenAIProxy,
-          selected_apps: selectedApps
-        })
-        setLoading(false)
-      }, 1000)
+    if (step === 'setup' && customerId && userId) {
+      processPaymentFlow()
     } else {
       setLoading(false)
+      setCurrentStep('completed')
     }
-  }, [sessionId, planId, applicantType, email, name, companyName, hasOpenAIProxy, selectedApps])
+  }, [step, customerId, userId])
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!sessionData?.customer_email) {
-      setError('メールアドレスが指定されていません')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('パスワードが一致しません')
-      return
-    }
-
-    if (password.length < 6) {
-      setError('パスワードは6文字以上で入力してください')
-      return
-    }
-
-    setIsPasswordSetting(true)
-    setError('')
-
+  const processPaymentFlow = async () => {
     try {
-      // Firebase Authでアカウントを作成
-      const { user } = await createUserWithEmailAndPassword(auth, sessionData.customer_email, password)
+      setCurrentStep('setup')
+      setLoading(true)
+
+      // Step 2: 初回決済を実行
+      console.log('🔄 Starting initial payment...')
+      setCurrentStep('payment')
       
-      // プロフィールを更新
-      if (sessionData.customer_name) {
-        await updateProfile(user, { displayName: sessionData.customer_name })
-      }
-
-      // Firestoreのユーザー情報を更新（パスワード設定完了フラグを削除）
-      try {
-        // メールアドレスで既存のFirestoreユーザーを検索
-        const existingUser = await getUserByEmail(sessionData.customer_email)
-        if (existingUser) {
-          // 既存ユーザーレコードを更新
-          await updateUser(existingUser.uid, {
-            passwordSetupRequired: false
-          })
-        } else {
-          // 新しいユーザーレコードを作成
-          await createUser(user.uid, {
-            email: sessionData.customer_email,
-            name: sessionData.customer_name || '',
-            passwordSetupRequired: false,
-            createdAt: new Date().toISOString()
-          })
-        }
-      } catch (error) {
-        console.error('Failed to update user flags:', error)
-        // エラーが発生してもログインは継続
-      }
-
-      // アカウント作成完了画面にリダイレクト
-      const params = new URLSearchParams({
-        email: sessionData.customer_email,
-        name: sessionData.customer_name || '',
-        plan: sessionData.plan_id || 'basic',
-        hasOpenAIProxy: sessionData.has_openai_proxy ? 'true' : 'false',
-        selectedApps: selectedApps.join(','),
-        amount: sessionData.amount_total.toString()
+      const paymentResponse = await fetch('/api/initial-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: customerId,
+          planId: planId,
+          hasOpenAIProxy: hasOpenAIProxy,
+          selectedApps: selectedApps,
+          firebaseUserId: userId, // webhook識別用
+        }),
       })
-      router.push(`/account-created?${params.toString()}`)
-    } catch (error: any) {
-      console.error('Password setup error:', error)
-      
-      let errorMessage = 'パスワード設定に失敗しました'
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'このメールアドレスは既に使用されています。ログインページからサインインしてください。'
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'パスワードが弱すぎます'
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'メールアドレスの形式が正しくありません'
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json()
+        throw new Error(`初回決済エラー: ${errorData.error}`)
       }
-      
-      setError(errorMessage)
-    } finally {
-      setIsPasswordSetting(false)
+
+      const paymentData = await paymentResponse.json()
+      setPaymentResult(paymentData)
+      console.log('✅ Initial payment completed:', paymentData)
+
+      // Step 3: サブスクリプション作成
+      console.log('🔄 Creating subscription...')
+      setCurrentStep('subscription')
+
+      const subscriptionResponse = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: customerId,
+          userId: userId,
+          planId: planId,
+          applicantType: applicantType,
+          customerName: name,
+          companyName: companyName,
+          customerEmail: email,
+          hasOpenAIProxy: hasOpenAIProxy,
+          selectedApps: selectedApps,
+          paymentIntentId: paymentData.paymentIntentId,
+        }),
+      })
+
+      if (!subscriptionResponse.ok) {
+        const errorData = await subscriptionResponse.json()
+        throw new Error(`サブスクリプション作成エラー: ${errorData.error}`)
+      }
+
+      const subscriptionData = await subscriptionResponse.json()
+      setSubscriptionResult(subscriptionData)
+      console.log('✅ Subscription created:', subscriptionData)
+
+      // 完了
+      setCurrentStep('completed')
+      setLoading(false)
+    } catch (error: any) {
+      console.error('❌ Payment flow error:', error)
+      setError(error.message)
+      setCurrentStep('error')
+      setLoading(false)
     }
   }
 
-  if (loading) {
+  // プログレス表示
+  const renderProgress = () => {
+    const steps = [
+      { key: 'setup', label: 'カード情報保存', icon: '💳' },
+      { key: 'payment', label: '初回決済', icon: '💰' },
+      { key: 'subscription', label: 'サブスクリプション', icon: '🔄' },
+      { key: 'completed', label: '完了', icon: '🎉' }
+    ]
+
     return (
-      <div className="success-container">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">決済情報を確認しています...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!sessionId) {
-    return (
-      <div className="success-container fade-in">
-        <div className="success-header">
-          <div style={{ 
-            width: '5rem', 
-            height: '5rem', 
-            background: 'var(--error-500)', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            margin: '0 auto 1.5rem',
-            boxShadow: 'var(--shadow-lg)'
-          }}>
-            <span style={{ fontSize: '2rem', color: 'white' }}>❌</span>
-          </div>
-          <h1 className="success-title">セッションが見つかりません</h1>
-          <p className="success-subtitle">
-            決済セッションが無効か、期限切れです。
-          </p>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <Link href="/login" className="btn btn-primary">
-            🔐 ログインページへ
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="success-container fade-in">
-      <div className="success-header">
-        <div className="success-icon">
-          <span style={{ fontSize: '2.5rem', color: 'white' }}>🎉</span>
-        </div>
-        <h1 className="success-title">
-          決済完了！
-        </h1>
-        <p className="success-subtitle">
-          {sessionData?.customer_name}様、AI業務アプリサービスへのお申し込みありがとうございます！
-        </p>
-      </div>
-
-      <div className="details-card">
-        <h2 className="details-title">📋 お申し込み詳細</h2>
-        <div className="details-grid">
-          <div className="detail-item">
-            <span className="detail-label">🏢 申込者区分</span>
-            <span className="detail-value">
-              {sessionData?.applicant_type === 'corporate' ? '🏢 法人・団体' : '👤 個人'}
-            </span>
-          </div>
-          {sessionData?.applicant_type === 'corporate' && sessionData?.company_name && (
-            <div className="detail-item">
-              <span className="detail-label">🏢 法人名・会社名</span>
-              <span className="detail-value">{sessionData.company_name}</span>
-            </div>
-          )}
-          <div className="detail-item">
-            <span className="detail-label">
-              {sessionData?.applicant_type === 'corporate' ? '👤 ご担当者名' : '👤 お名前'}
-            </span>
-            <span className="detail-value">{sessionData?.customer_name}</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">📧 メールアドレス</span>
-            <span className="detail-value">{sessionData?.customer_email}</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">📦 選択プラン</span>
-            <span className="detail-value">🎯 基本プラン（HK$800/月）</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">🔒 OpenAI API代行</span>
-            <span className="detail-value">
-              {sessionData?.has_openai_proxy ? (
-                <span style={{ color: 'var(--success-600)' }}>✅ あり（+HK$200/月）</span>
-              ) : (
-                <span style={{ color: 'var(--gray-500)' }}>❌ なし</span>
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {steps.map((stepItem, index) => (
+            <div key={stepItem.key} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+              <div style={{
+                width: '2.5rem',
+                height: '2.5rem',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: getCurrentStepIndex() >= index 
+                  ? (getCurrentStepIndex() === index ? 'var(--primary-500)' : 'var(--success-500)')
+                  : 'var(--gray-300)',
+                color: 'white',
+                fontSize: '1.25rem',
+                transition: 'all 0.3s ease'
+              }}>
+                {getCurrentStepIndex() > index ? '✅' : stepItem.icon}
+              </div>
+              <span style={{
+                marginLeft: '0.5rem',
+                fontSize: '0.875rem',
+                color: getCurrentStepIndex() >= index ? 'var(--gray-900)' : 'var(--gray-500)',
+                fontWeight: getCurrentStepIndex() === index ? '600' : '400'
+              }}>
+                {stepItem.label}
+              </span>
+              {index < steps.length - 1 && (
+                <div style={{
+                  flex: 1,
+                  height: '2px',
+                  background: getCurrentStepIndex() > index ? 'var(--success-500)' : 'var(--gray-300)',
+                  margin: '0 1rem',
+                  transition: 'all 0.3s ease'
+                }} />
               )}
-            </span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">💳 決済状況</span>
-            <span className="detail-value status-paid">
-              ✅ {sessionData?.payment_status === 'paid' ? '決済完了' : sessionData?.payment_status}
-            </span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">💰 合計金額</span>
-            <span className="detail-value" style={{ color: 'var(--primary-600)', fontSize: '1.125rem', fontWeight: '700' }}>
-              HK${sessionData?.amount_total?.toLocaleString()}/月
-            </span>
-          </div>
-
+            </div>
+          ))}
         </div>
       </div>
+    )
+  }
 
-      {/* 選択されたアプリ一覧 */}
-      {sessionData?.selected_apps && sessionData.selected_apps.length > 0 && (
-        <div className="details-card">
-          <h2 className="details-title">🎯 利用希望アプリ一覧</h2>
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
-            {sessionData.selected_apps.map((appId: string) => {
-              const app = businessApps.find(a => a.id === appId)
-              return app ? (
-                <div key={appId} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '1rem',
-                  background: 'var(--primary-50)',
-                  border: '1px solid var(--primary-200)',
-                  borderRadius: 'var(--radius-md)'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
-                      {app.name}
-                    </h4>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
-                      {app.description}
-                    </p>
-                  </div>
-                  <span style={{ 
-                    background: 'var(--success-100)', 
-                    color: 'var(--success-800)', 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '9999px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: '600' 
-                  }}>
-                    ✅ 選択済み
-                  </span>
-                </div>
-              ) : null
-            })}
-          </div>
-        </div>
-      )}
+  const getCurrentStepIndex = () => {
+    switch (currentStep) {
+      case 'setup': return 0
+      case 'payment': return 1
+      case 'subscription': return 2
+      case 'completed': return 3
+      case 'error': return 1 // エラー時は現在のステップを維持
+      default: return 0
+    }
+  }
 
-      {/* パスワード設定フォーム */}
-      <div className="details-card">
-        <h2 className="details-title">🔐 パスワード設定</h2>
-        <p style={{ color: 'var(--gray-600)', marginBottom: '1.5rem' }}>
-          アカウント「<strong>{sessionData?.customer_email}</strong>」のパスワードを設定してください
-        </p>
-        
-        <div style={{
-          background: 'var(--success-50)',
-          border: '1px solid var(--success-200)',
-          color: 'var(--success-800)',
-          padding: '1rem',
-          borderRadius: 'var(--radius-md)',
-          fontSize: '0.875rem',
-          marginBottom: '1.5rem'
-        }}>
-          ✅ 決済完了と同時にアカウントを作成いたしました
-        </div>
-
-        <form onSubmit={handlePasswordSubmit} className="application-form">
-          {error && (
+  // エラー表示
+  if (currentStep === 'error') {
+    return (
+      <div className="page-container fade-in">
+        <div className="form-container" style={{ maxWidth: '600px', margin: '2rem auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--error-600)', marginBottom: '0.5rem' }}>
+              ❌ エラーが発生しました
+            </h1>
+            <p style={{ color: 'var(--gray-600)', marginBottom: '1rem' }}>
+              申込処理中にエラーが発生しました。
+            </p>
             <div style={{
               background: 'var(--red-50)',
               border: '1px solid var(--red-200)',
               color: 'var(--red-800)',
               padding: '1rem',
               borderRadius: 'var(--radius-md)',
-              marginBottom: '1rem',
-              fontSize: '0.875rem'
+              marginBottom: '2rem'
             }}>
-              ❌ {error}
+              {error}
             </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              🔒 パスワード
-            </label>
-            <input
-              type="password"
-              id="password"
-              required
-              minLength={6}
-              className="form-input"
-              placeholder="6文字以上で入力"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isPasswordSetting}
-            />
           </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword" className="form-label">
-              🔒 パスワード（確認）
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              required
-              minLength={6}
-              className="form-input"
-              placeholder="同じパスワードを再入力"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isPasswordSetting}
-            />
+          
+          {renderProgress()}
+          
+          <div style={{ textAlign: 'center' }}>
+            <Link href="/" className="btn btn-primary">
+              🏠 ホームに戻る
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={isPasswordSetting}
-            className="btn btn-primary"
-            style={{ width: '100%', fontSize: '1rem', padding: '1rem' }}
-          >
-            {isPasswordSetting ? (
-              <>
-                <div className="loading-spinner" style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.5rem' }}></div>
-                設定中...
-              </>
-            ) : (
-              <>
-                🚀 パスワードを設定してアカウント作成を完了する
-              </>
-            )}
-          </button>
-        </form>
+        </div>
       </div>
+    )
+  }
 
+  // 処理中表示
+  if (loading || currentStep !== 'completed') {
+    return (
+      <div className="page-container fade-in">
+        <div className="form-container" style={{ maxWidth: '600px', margin: '2rem auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--primary-600)', marginBottom: '0.5rem' }}>
+              🔄 申込処理中...
+            </h1>
+            <p style={{ color: 'var(--gray-600)' }}>
+              しばらくお待ちください。処理には1〜2分程度かかります。
+            </p>
+          </div>
+          
+          {renderProgress()}
+          
+          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <div style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: '2rem' }}>
+              ⚪
+            </div>
+            <p style={{ marginTop: '1rem', color: 'var(--gray-600)' }}>
+              {currentStep === 'setup' && 'カード情報を確認中...'}
+              {currentStep === 'payment' && '初回決済を処理中...'}
+              {currentStep === 'subscription' && 'サブスクリプションを作成中...'}
+            </p>
+          </div>
+        </div>
+        
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
+  // 完了表示
+  const totalPrice = (selectedPlan?.price || 800) + 
+                   (selectedApps.length * 400) + 
+                   (hasOpenAIProxy ? 200 : 0)
+
+  return (
+    <div className="page-container fade-in">
+      <div className="form-container" style={{ maxWidth: '600px', margin: '2rem auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            width: '4rem',
+            height: '4rem',
+            borderRadius: '50%',
+            background: 'var(--success-500)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1rem',
+            fontSize: '2rem'
+          }}>
+            🎉
+          </div>
+          <h1 style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--success-600)', marginBottom: '0.5rem' }}>
+            申込完了！
+          </h1>
+          <p style={{ color: 'var(--gray-600)' }}>
+            {name}様、AI業務アプリサービスへのお申し込みありがとうございます！
+          </p>
+        </div>
+
+        {renderProgress()}
+
+        <div style={{
+          background: 'var(--gray-50)',
+          border: '1px solid var(--gray-200)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.5rem',
+          marginBottom: '2rem'
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--gray-900)' }}>
+            📋 申込内容
+          </h2>
+          
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--gray-600)' }}>📦 プラン</span>
+              <span style={{ fontWeight: '600' }}>{selectedPlan?.name || '基本プラン'}</span>
+            </div>
+            
+            {hasOpenAIProxy && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--gray-600)' }}>🔒 OpenAI API代行</span>
+                <span style={{ fontWeight: '600' }}>あり (+HK$200)</span>
+              </div>
+            )}
+            
+            {selectedApps.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--gray-600)' }}>🎯 追加アプリ</span>
+                <span style={{ fontWeight: '600' }}>{selectedApps.length}個 (+HK${selectedApps.length * 400})</span>
+              </div>
+            )}
+            
+            <hr style={{ border: 'none', borderTop: '1px solid var(--gray-300)', margin: '0.5rem 0' }} />
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.125rem' }}>
+              <span style={{ fontWeight: '600', color: 'var(--gray-900)' }}>💰 月額料金</span>
+              <span style={{ fontWeight: '700', color: 'var(--primary-600)' }}>HK${totalPrice}</span>
+            </div>
+            
+            {paymentResult && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--gray-600)' }}>💳 初回決済</span>
+                <span style={{ fontWeight: '600', color: 'var(--success-600)' }}>✅ 完了 (HK${paymentResult.amount})</span>
+              </div>
+            )}
+            
+            {subscriptionResult && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--gray-600)' }}>📅 次回課金日</span>
+                <span style={{ fontWeight: '600' }}>
+                  {new Date(subscriptionResult.nextBillingDate).toLocaleDateString('ja-JP')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{
+          background: 'var(--primary-50)',
+          border: '1px solid var(--primary-200)',
+          borderRadius: 'var(--radius-md)',
+          padding: '1rem',
+          marginBottom: '2rem'
+        }}>
+          <p style={{ color: 'var(--primary-800)', fontSize: '0.875rem', margin: 0 }}>
+            📧 設定完了通知とアクセス情報を <strong>{email}</strong> に送信いたします。<br />
+            🚀 サーバー環境の構築には1〜2営業日かかります。準備完了次第ご連絡いたします。
+          </p>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <Link href="/mypage" className="btn btn-primary" style={{ marginRight: '1rem' }}>
+            📊 マイページへ
+          </Link>
+          <Link href="/" className="btn btn-secondary">
+            🏠 ホームへ
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
@@ -390,11 +375,17 @@ function SuccessContent() {
 export default function SuccessPage() {
   return (
     <Suspense fallback={
-      <div className="success-container">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">ページを読み込んでいます...</p>
+      <div className="page-container">
+        <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <div style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: '2rem' }}>⚪</div>
+          <p style={{ marginTop: '1rem', color: 'var(--gray-600)' }}>読み込み中...</p>
         </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     }>
       <SuccessContent />

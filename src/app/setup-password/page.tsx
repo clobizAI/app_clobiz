@@ -9,15 +9,21 @@ import { updateUser, getUserByEmail, createUser } from '@/lib/firestore'
 import { Suspense } from 'react'
 
 function SetupPasswordContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const email = searchParams.get('email')
-  const name = searchParams.get('name')
-
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // URLパラメータから申込データを取得
+  const applicantType = searchParams.get('applicantType') || 'corporate'
+  const name = searchParams.get('name') || ''
+  const companyName = searchParams.get('companyName') || ''
+  const email = searchParams.get('email') || ''
+  const planId = searchParams.get('planId') || 'basic'
+  const hasOpenAIProxy = searchParams.get('hasOpenAIProxy') === 'true'
+  const selectedApps = searchParams.get('selectedApps')?.split(',').filter(app => app) || []
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,38 +50,74 @@ function SetupPasswordContent() {
       // Firebase Authでアカウントを作成
       const { user } = await createUserWithEmailAndPassword(auth, email, password)
       
+      console.log('🎯 Firebase Auth user created:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName
+      })
+      
       // プロフィールを更新
       if (name) {
         await updateProfile(user, { displayName: name })
+        console.log('✅ Profile updated with display name:', name)
       }
 
-              // Firestoreのユーザー情報を更新（パスワード設定完了フラグを削除）
-        try {
-          // メールアドレスで既存のFirestoreユーザーを検索
-          const existingUser = await getUserByEmail(email)
-          if (existingUser) {
-            // 既存ユーザーレコードを更新
-            await updateUser(existingUser.uid, {
-              passwordSetupRequired: false
-            })
-          } else {
-            // 新しいユーザーレコードを作成
-            await createUser(user.uid, {
-              email: email,
-              name: name || '',
-              passwordSetupRequired: false,
-              createdAt: new Date().toISOString()
-            })
-          }
-        } catch (error) {
-          console.error('Failed to update user flags:', error)
-          // エラーが発生してもログインは継続
-        }
+      // Firestoreのユーザー情報を作成
+      try {
+        await createUser(user.uid, {
+          email: email,
+          name: name,
+          applicantType: applicantType as 'individual' | 'corporate',
+          companyName: companyName || undefined,
+          passwordSetupRequired: false,
+          createdAt: new Date().toISOString()
+        })
+        console.log('✅ Firestore user record created:', user.uid)
+      } catch (error) {
+        console.error('Failed to create user record:', error)
+        // エラーが発生してもチェックアウトは継続
+      }
 
-      // マイページにリダイレクト
-      router.push('/mypage')
+      // 申込データを構築
+      const formData = {
+        applicantType: applicantType as 'individual' | 'corporate',
+        name: name,
+        companyName: companyName || '',
+        email: email,
+        planId: planId,
+        hasOpenAIProxy: hasOpenAIProxy,
+        selectedApps: selectedApps,
+        userId: user.uid // Firebase UIDを追加
+      }
+
+      console.log('Proceeding to setup payment with:', formData)
+
+      // setup-payment APIを呼び出し（Step 1: カード情報保存）
+      const response = await fetch('/api/setup-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Setup payment API Error:', errorData)
+        setError(`カード情報設定でエラーが発生しました: ${errorData.error}`)
+        return
+      }
+
+      const data = await response.json()
+      
+      if (data.url) {
+        console.log('Redirecting to Stripe setup session:', data.url)
+        window.location.href = data.url
+      } else {
+        setError('カード情報設定URLが取得できませんでした。')
+      }
     } catch (error: any) {
-      console.error('Password setup error:', error)
+      console.error('Setup password error:', error)
       
       let errorMessage = 'パスワード設定に失敗しました'
       if (error.code === 'auth/email-already-in-use') {
@@ -125,14 +167,14 @@ function SetupPasswordContent() {
             アカウント「<strong>{email}</strong>」のパスワードを設定してください
           </p>
           <div style={{
-            background: 'var(--success-50)',
-            border: '1px solid var(--success-200)',
-            color: 'var(--success-800)',
+            background: 'var(--primary-50)',
+            border: '1px solid var(--primary-200)',
+            color: 'var(--primary-800)',
             padding: '0.75rem',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.875rem'
           }}>
-            ✅ 決済完了と同時にアカウントを作成いたしました
+            💳 パスワード設定後、カード情報の登録に進みます
           </div>
         </div>
 
@@ -223,10 +265,10 @@ function SetupPasswordContent() {
             {isLoading ? (
               <>
                 <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⚪</span>
-                パスワード設定中...
+                アカウント作成中...
               </>
             ) : (
-              '🚀 パスワードを設定してアプリを使い始める'
+              '💳 パスワードを設定してカード情報登録に進む'
             )}
           </button>
         </form>
