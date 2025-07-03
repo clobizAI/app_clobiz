@@ -151,8 +151,10 @@ export default function StorageUpgradePage() {
   if (!activeContract) {
     return (
       <div className="page-container fade-in">
-        <div className="header-section">
-          <h1 className="header-title">💾 容量変更申請</h1>
+        <div className="page-header">
+          <h1 className="page-title">
+            <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'initial' }}>📦</span> 容量変更申請
+          </h1>
         </div>
         
         <div className="form-container">
@@ -175,120 +177,144 @@ export default function StorageUpgradePage() {
 
   return (
     <div className="page-container fade-in">
-      <div className="header-section">
-        <h1 className="header-title">💾 容量変更申請</h1>
-        <p className="header-description">
-          データストレージの容量を変更できます。申請は前月末まで、翌月1日から適用されます。
+      <div className="page-header">
+        <h1 className="page-title">
+          <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'initial' }}>📦</span> 容量変更申請
+        </h1>
+        <p className="page-subtitle">
+          データストレージをアップグレードできます。
         </p>
       </div>
 
       <div className="form-container">
         {/* 現在の容量プラン */}
-        <div className="section-card">
-          <h2 className="section-title">📊 現在の容量プラン</h2>
-          <div className="current-plan">
-            <div className="plan-info">
-              <h3 className="plan-name">{currentPlan?.name}</h3>
-              <p className="plan-price">
-                {currentPlan?.price === 0 ? '基本プランに含まれる' : `HK$${currentPlan?.price}/月`}
-              </p>
-              <p className="plan-storage">{currentPlan?.storageGB}GB</p>
-            </div>
+        <div className="contracts-card">
+          <div className="contracts-header">
+            <h2 className="contracts-title">📦 データストレージ</h2>
           </div>
-          
-          {/* 申請中の容量プラン */}
-          {pendingPlan && (
-            <div className="pending-plan">
-              <div className="alert alert-info">
-                <strong>申請中:</strong> {pendingPlan.name} (HK${pendingPlan.price}/月) - 翌月1日から適用予定
+          <div style={{ padding: '1.5rem' }}>
+            <div className="plan-card plan-card-selected">
+              <div className="plan-content">
+                <h4 className="plan-name">
+                  📊 現在のプラン: {currentPlan?.name}
+                </h4>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', margin: '0.5rem 0' }}>
+                  {currentPlan?.price === 0 ? '基本プランに含まれています' : `HK$${currentPlan?.price}/月`}
+                </p>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* 重要なお知らせ */}
-        <div className="notice-card">
-          <h3 className="notice-title">⚠️ 重要なお知らせ</h3>
-          <ul className="notice-list">
-            <li><strong>申請締切:</strong> 前月末まで</li>
-            <li><strong>適用日:</strong> 翌月1日から新容量でサービス開始</li>
-            <li><strong>課金:</strong> 翌月1日の定期課金で新料金（即時課金なし）</li>
-            <li><strong>支払い方法:</strong> 既存の支払い方法を使用（カード情報入力不要）</li>
-          </ul>
-        </div>
-
-        {/* 申請が可能な場合のみ表示 */}
-        {!pendingPlan && (
-          <form onSubmit={handleSubmit}>
-            <div className="section-card">
-              <h2 className="section-title">📈 新しい容量プラン</h2>
-              <div className="plans-grid">
-                {availablePlans.map(plan => (
-                  <div key={plan.id} className="plan-card">
-                    <input
-                      type="radio"
-                      id={plan.id}
-                      name="storagePlan"
-                      value={plan.id}
-                      checked={selectedStoragePlan === plan.id}
-                      onChange={(e) => setSelectedStoragePlan(e.target.value)}
-                      className="plan-radio"
-                    />
-                    <label htmlFor={plan.id} className="plan-label">
-                      <div className="plan-header">
-                        <h3 className="plan-name">{plan.name}</h3>
-                        <p className="plan-price">HK${plan.price}/月</p>
-                      </div>
-                      <div className="plan-details">
-                        <p className="plan-storage">{plan.storageGB}GB</p>
-                        <p className="plan-upgrade">
-                          現在より {plan.storageGB - (currentPlan?.storageGB || 5)}GB 増量
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {message && (
-              <div className={`alert ${message.includes('完了') ? 'alert-success' : 'alert-error'}`}>
-                {message}
+            
+            {/* 申請中の容量プラン */}
+            {pendingPlan && (
+              <div className="plan-card" style={{ 
+                background: 'var(--warning-50)', 
+                borderColor: 'var(--warning-200)' 
+              }}>
+                <div className="plan-content">
+                  <h4 className="plan-name">
+                    ⏳ 申請中の容量プラン: {pendingPlan.name}
+                  </h4>
+                  <p className="plan-features">
+                    翌月1日から適用予定 - {pendingPlan.storageGB}GB利用可能
+                  </p>
+                  <span className="plan-price" style={{
+                    background: 'var(--warning-100)',
+                    color: 'var(--warning-800)'
+                  }}>
+                    HK${pendingPlan.price}/月
+                  </span>
+                </div>
               </div>
             )}
 
-            <div className="form-actions">
-              <button 
-                type="submit" 
-                disabled={isSubmitting || !selectedStoragePlan}
-                className="btn btn-primary btn-large"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="loading-spinner-small"></span>
-                    申請中...
-                  </>
-                ) : (
-                  <>
-                    📝 容量変更を申請する
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+            {/* 申請が可能な場合のみ表示 */}
+            {!pendingPlan && (
+              <div>
+                {/* 重要なお知らせ */}
+                <div className="notice-card" style={{ textAlign: 'center', margin: '2rem 0' }}>
+                  <h3 className="notice-title">⚠️ 申請前に必ずご確認ください</h3>
+                  <ul className="notice-list" style={{ textAlign: 'left', display: 'inline-block', margin: '0 auto' }}>
+                    <li><strong>申請締切:</strong> 毎月末まで</li>
+                    <li><strong>適用開始:</strong> 翌月1日から新しい容量でご利用可能</li>
+                    <li><strong>課金タイミング:</strong> 翌月1日の定期課金から新料金</li>
+                  </ul>
+                </div>
 
-        {/* 既に申請済みの場合 */}
-        {pendingPlan && (
-          <div className="section-card">
-            <div className="alert alert-info">
-              <h3>申請済み</h3>
-              <p>既に容量変更申請が完了しています。翌月1日から新しい容量でご利用いただけます。</p>
-            </div>
+                <form onSubmit={handleSubmit}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <h3 className="contracts-title" style={{ marginBottom: '1rem' }}>📈 新しい容量プラン</h3>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      {availablePlans.map(plan => (
+                        <div 
+                          key={plan.id} 
+                          className={`plan-card ${selectedStoragePlan === plan.id ? 'plan-card-selected' : ''}`}
+                          onClick={() => setSelectedStoragePlan(plan.id)}
+                          style={{ padding: '1rem' }}
+                        >
+                          <input
+                            type="radio"
+                            id={plan.id}
+                            name="storagePlan"
+                            value={plan.id}
+                            checked={selectedStoragePlan === plan.id}
+                            onChange={(e) => setSelectedStoragePlan(e.target.value)}
+                            style={{ position: 'absolute', opacity: 0 }}
+                          />
+                          <div className="plan-content">
+                            <h4 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary-600)', margin: '0' }}>
+                              📦 {plan.name}
+                            </h4>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', margin: '0.25rem 0 0 0' }}>
+                              HK${plan.price}/月
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {message && (
+                    <div className={`alert ${message.includes('完了') ? 'alert-success' : 'alert-error'}`}>
+                      {message}
+                    </div>
+                  )}
+
+                  <div className="form-group" style={{ textAlign: 'center' }}>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting || !selectedStoragePlan}
+                      className="btn btn-primary submit-btn"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="loading-spinner" style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }}></span>
+                          申請中...
+                        </>
+                      ) : (
+                        <>
+                          📦 容量変更を申請
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* 既に申請済みの場合 */}
+            {pendingPlan && (
+              <div className="info-card">
+                <div className="info-content">
+                  <p className="info-title">
+                    容量変更申請が完了済みです。翌月1日から新しい容量でご利用いただけます。
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        <div className="form-actions">
+        <div className="actions-container">
           <Link href="/mypage" className="btn btn-secondary">
             ← マイページに戻る
           </Link>
