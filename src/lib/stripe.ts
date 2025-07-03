@@ -139,4 +139,33 @@ export const openaiProxyService = {
   currency: 'HKD',
   description: 'OpenAI APIをお持ちでない方向けの代行サービス',
   stripePriceId: 'price_1Reua8H4hsO7RxQ6ayFN7Zbo',
-}; 
+};
+
+// 容量プラン設定
+export const storagePlans = [
+  {
+    id: '5gb',
+    name: '5GB（基本）',
+    storageGB: 5,
+    price: 0,
+    currency: 'HKD',
+    stripePriceId: '', // 基本プランに含まれるため空
+    isDefault: true
+  },
+  {
+    id: '50gb',
+    name: '50GB',
+    storageGB: 50,
+    price: 200,
+    currency: 'HKD',
+    stripePriceId: 'price_storage_50gb_200'
+  },
+  {
+    id: '200gb',
+    name: '200GB',
+    storageGB: 200,
+    price: 500,
+    currency: 'HKD',
+    stripePriceId: 'price_storage_200gb_500'
+  }
+]; 

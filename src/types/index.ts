@@ -42,6 +42,17 @@ export interface OpenAIProxyService {
   stripePriceId: string;
 }
 
+// Storage Plan Types
+export interface StoragePlan {
+  id: string;
+  name: string;
+  storageGB: number;
+  price: number;
+  currency: string;
+  stripePriceId: string;
+  isDefault?: boolean;
+}
+
 // Contract Types
 export interface Contract {
   id: string;
@@ -60,6 +71,10 @@ export interface Contract {
   companyName?: string; // 法人名・会社名
   passwordSetupRequired?: boolean; // 自動作成アカウントのパスワード設定が必要
   customerEmail?: string; // メールアドレスでの検索用
+  // 容量プラン関連
+  currentStoragePlan?: string; // 現在の容量プランID
+  pendingStoragePlan?: string; // 申請中の容量プランID（翌月適用予定）
+  storageUpgradeAppliedDate?: string; // 容量変更適用日
   createdAt: string;
   updatedAt: string;
 }

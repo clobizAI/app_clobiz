@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Contract } from '@/types'
-import { businessApps } from '@/lib/stripe'
+import { businessApps, storagePlans } from '@/lib/stripe'
 import { useAuth } from '@/components/AuthProvider'
 import { getUserContractsByEmail } from '@/lib/firestore'
 
@@ -76,6 +76,10 @@ export default function MyPage() {
 
   const handleAddAppRequest = () => {
     router.push('/add-app')
+  }
+
+  const handleStorageUpgradeRequest = () => {
+    router.push('/storage-upgrade')
   }
 
   // 認証中の場合
@@ -240,6 +244,132 @@ export default function MyPage() {
           </div>
         )}
       </div>
+
+      {/* 容量プランセクション */}
+      {activeContract && (
+        <div className="contracts-card">
+          <div className="contracts-header">
+            <h2 className="contracts-title">💾 データストレージ容量</h2>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            {(() => {
+              const currentStoragePlan = activeContract.currentStoragePlan || '5gb'
+              const pendingStoragePlan = activeContract.pendingStoragePlan
+              const currentPlan = storagePlans.find(plan => plan.id === currentStoragePlan)
+              const pendingPlan = pendingStoragePlan ? storagePlans.find(plan => plan.id === pendingStoragePlan) : null
+
+              return (
+                <div>
+                  {/* 現在の容量プラン */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '1.5rem',
+                    background: 'var(--success-50)',
+                    border: '1px solid var(--success-200)',
+                    borderRadius: 'var(--radius-lg)',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ 
+                        fontSize: '1.125rem', 
+                        fontWeight: '600', 
+                        color: 'var(--gray-900)', 
+                        marginBottom: '0.5rem' 
+                      }}>
+                        📊 現在の容量プラン: {currentPlan?.name}
+                      </h4>
+                      <p style={{ 
+                        color: 'var(--gray-600)', 
+                        fontSize: '0.875rem',
+                        marginBottom: '0.75rem' 
+                      }}>
+                        {currentPlan?.storageGB}GB利用可能
+                      </p>
+                      <span style={{
+                        background: currentPlan?.price === 0 ? 'var(--success-100)' : 'var(--blue-100)',
+                        color: currentPlan?.price === 0 ? 'var(--success-800)' : 'var(--blue-800)',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        fontWeight: '600'
+                      }}>
+                        {currentPlan?.price === 0 ? '基本プランに含まれる' : `HK$${currentPlan?.price}/月`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 申請中の容量プラン */}
+                  {pendingPlan && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '1.5rem',
+                      background: 'var(--warning-50)',
+                      border: '1px solid var(--warning-200)',
+                      borderRadius: 'var(--radius-lg)',
+                      marginBottom: '1rem'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ 
+                          fontSize: '1.125rem', 
+                          fontWeight: '600', 
+                          color: 'var(--gray-900)', 
+                          marginBottom: '0.5rem' 
+                        }}>
+                          ⏳ 申請中の容量プラン: {pendingPlan.name}
+                        </h4>
+                        <p style={{ 
+                          color: 'var(--gray-600)', 
+                          fontSize: '0.875rem',
+                          marginBottom: '0.75rem' 
+                        }}>
+                          翌月1日から適用予定 - {pendingPlan.storageGB}GB利用可能
+                        </p>
+                        <span style={{
+                          background: 'var(--warning-100)',
+                          color: 'var(--warning-800)',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: '600'
+                        }}>
+                          HK${pendingPlan.price}/月
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 容量変更ボタン */}
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '1.5rem',
+                    background: 'var(--gray-50)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px dashed var(--gray-300)'
+                  }}>
+                    <p style={{ color: 'var(--gray-600)', marginBottom: '1rem' }}>
+                      {pendingPlan 
+                        ? '容量変更申請が完了済みです。翌月1日から新しい容量でご利用いただけます。'
+                        : 'より多くのデータを保存したい場合は容量をアップグレードできます'
+                      }
+                    </p>
+                    {!pendingPlan && (
+                      <button
+                        onClick={handleStorageUpgradeRequest}
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.875rem' }}
+                      >
+                        💾 容量変更を申請
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* アプリ利用セクション */}
       {activeContract && activeContract.selectedApps && activeContract.selectedApps.length > 0 && (
