@@ -141,6 +141,16 @@ export const openaiProxyService = {
   stripePriceId: 'price_1Reua8H4hsO7RxQ6ayFN7Zbo',
 };
 
+// 汎用アプリオプション
+export const appOption = {
+  id: 'app-option',
+  name: 'アプリオプション',
+  price: 400,
+  currency: 'HKD',
+  description: 'AIアプリケーション追加オプション',
+  stripePriceId: 'price_1RgjIsH4hsO7RxQ6Vj734Aee',
+};
+
 // 容量プラン設定
 export const storagePlans = [
   {
@@ -158,7 +168,7 @@ export const storagePlans = [
     storageGB: 50,
     price: 200,
     currency: 'HKD',
-    stripePriceId: 'price_storage_50gb_200'
+    stripePriceId: 'price_1Rgj3hH4hsO7RxQ67H1W73y3'
   },
   {
     id: '200gb',

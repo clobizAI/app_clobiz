@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { stripe, appOption } from '@/lib/stripe';
 import { createContract, createUser, getUserByEmail, getContractById, updateContract } from '@/lib/firestore';
 import Stripe from 'stripe';
 
@@ -161,6 +161,58 @@ export async function POST(request: NextRequest) {
           console.log('✅ Auto-created user record for checkout:', userId);
         }
 
+        console.log('📄 Creating subscription for future billing...');
+        // 翌月1日開始のサブスクリプションを作成
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        nextMonth.setDate(1);
+        nextMonth.setHours(0, 0, 0, 0);
+        const billingCycleAnchor = Math.floor(nextMonth.getTime() / 1000);
+
+        const customerId = typeof fullSession.customer === 'string'
+          ? fullSession.customer
+          : (fullSession.customer as any)?.id;
+
+        // サブスクリプション用のアイテムを構築
+        const subscriptionItems = [
+          {
+            price: 'price_1ReuZ9H4hsO7RxQ6BVGs7Q8W', // 基本プラン
+            quantity: 1,
+          },
+        ];
+
+        // OpenAI API代行が選択されている場合は追加
+        if (hasOpenAIProxy === 'true') {
+          subscriptionItems.push({
+            price: 'price_1Reua8H4hsO7RxQ6ayFN7Zbo', // OpenAI API代行
+            quantity: 1,
+          });
+        }
+
+        // 追加アプリが選択されている場合は追加
+        if (selectedApps) {
+          const appsCount = selectedApps.split(',').filter(app => app).length;
+          if (appsCount > 0) {
+            subscriptionItems.push({
+              price: appOption.stripePriceId, // アプリオプション400の価格ID
+              quantity: appsCount, // 選択したアプリの数
+            });
+          }
+        }
+
+        const subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: subscriptionItems,
+          billing_cycle_anchor: billingCycleAnchor,
+          metadata: {
+            contractType: 'basic',
+            planId: planId,
+            customerEmail: customerEmail,
+            hasOpenAIProxy: hasOpenAIProxy || 'false',
+            selectedApps: selectedApps || '',
+          },
+        });
+
         console.log('📄 Creating contract for user:', userId);
         // 契約情報を作成
         await createContract({
@@ -169,11 +221,8 @@ export async function POST(request: NextRequest) {
           planName: planId === 'basic' ? '基本プラン' : planId,
           status: 'active' as const,
           startDate: new Date().toISOString(),
-          stripeCustomerId:
-            typeof fullSession.customer === 'string'
-              ? fullSession.customer
-              : (fullSession.customer as any)?.id,
-          stripeSubscriptionId: (fullSession.subscription as Stripe.Subscription)?.id,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscription.id,
           contractPdfUrl: `https://example.com/contracts/${userId}.pdf`, // 仮のURL
           hasOpenAIProxy: hasOpenAIProxy === 'true',
           selectedApps: selectedApps ? selectedApps.split(',') : [],

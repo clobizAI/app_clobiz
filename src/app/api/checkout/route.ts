@@ -56,9 +56,6 @@ export async function POST(request: NextRequest) {
             description: selectedPlan.features.join('、'),
           },
           unit_amount: selectedPlan.price * 100, // HKD cents
-          recurring: {
-            interval: 'month' as const,
-          },
         },
         quantity: 1,
       },
@@ -77,9 +74,6 @@ export async function POST(request: NextRequest) {
             }).join('、'),
           },
           unit_amount: 400 * 100, // HKD cents
-          recurring: {
-            interval: 'month' as const,
-          },
         },
         quantity: selectedApps.length,
       });
@@ -95,9 +89,6 @@ export async function POST(request: NextRequest) {
             description: openaiProxyService.description,
           },
           unit_amount: openaiProxyService.price * 100, // HKD cents
-          recurring: {
-            interval: 'month' as const,
-          },
         },
         quantity: 1,
       });
@@ -105,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      mode: 'subscription',
+      mode: 'payment',
       customer_email: email,
       line_items: lineItems,
       metadata: {
