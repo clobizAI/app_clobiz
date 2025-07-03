@@ -76,9 +76,6 @@ export async function POST(request: NextRequest) {
             description: app.description,
           },
           unit_amount: 400 * 100, // HK$400 * 100 for cents
-          recurring: {
-            interval: 'month' as const,
-          },
         },
         quantity: 1,
       }))
@@ -86,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      mode: 'subscription',
+      mode: 'payment',
       customer_email: userEmail,
       line_items: lineItems,
       metadata: {

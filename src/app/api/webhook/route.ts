@@ -110,10 +110,9 @@ export async function POST(request: NextRequest) {
           const newApps = addedApps.split(',');
           const updatedApps = [...currentApps, ...newApps];
 
-          // 契約を更新
+          // 契約を更新（アプリ追加のみ、サブスクリプション更新は月次バッチで処理）
           await updateContract(contractId, {
             selectedApps: updatedApps,
-            stripeSubscriptionId: (fullSession.subscription as Stripe.Subscription)?.id,
             updatedAt: new Date().toISOString(),
           });
 
@@ -169,9 +168,27 @@ export async function POST(request: NextRequest) {
         nextMonth.setHours(0, 0, 0, 0);
         const billingCycleAnchor = Math.floor(nextMonth.getTime() / 1000);
 
-        const customerId = typeof fullSession.customer === 'string'
+        // customerIdを取得、なければ作成
+        let customerId = typeof fullSession.customer === 'string'
           ? fullSession.customer
           : (fullSession.customer as any)?.id;
+          
+        if (!customerId) {
+          console.log('📝 Creating Stripe customer...');
+          const customer = await stripe.customers.create({
+            email: customerEmail,
+            name: customerName,
+            metadata: {
+              planId: planId,
+              applicantType: applicantType,
+              companyName: companyName || '',
+            },
+          });
+          customerId = customer.id;
+          console.log('✅ Created Stripe customer:', customerId);
+        } else {
+          console.log('👤 Using existing Stripe customer:', customerId);
+        }
 
         // サブスクリプション用のアイテムを構築
         const subscriptionItems = [
