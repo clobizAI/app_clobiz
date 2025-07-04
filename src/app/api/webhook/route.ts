@@ -48,6 +48,53 @@ export async function POST(request: NextRequest) {
       console.log('🎯 Processing payment_intent.succeeded');
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       
+      // アプリ追加決済の場合
+      if (paymentIntent.metadata?.type === 'app_addition') {
+        console.log('➕ Processing app addition payment');
+        
+        const { contractId, addedApps, userId } = paymentIntent.metadata;
+        
+        if (!contractId || !addedApps || !userId) {
+          console.error('❌ Missing metadata in app addition payment:', {
+            contractId: !!contractId,
+            addedApps: !!addedApps,
+            userId: !!userId
+          });
+          break;
+        }
+
+        try {
+          // 既存契約を取得
+          const existingContract = await getContractById(contractId);
+          if (!existingContract) {
+            console.error('❌ Contract not found:', contractId);
+            break;
+          }
+
+          // 新しいアプリリストを作成
+          const currentApps = existingContract.selectedApps || [];
+          const newApps = addedApps.split(',');
+          const updatedApps = [...currentApps, ...newApps];
+
+          // 契約を更新（アプリ追加のみ、サブスクリプション更新は月次バッチで処理）
+          await updateContract(contractId, {
+            selectedApps: updatedApps,
+            updatedAt: new Date().toISOString(),
+          });
+
+          console.log('✅ Apps added to contract via PaymentIntent:', {
+            contractId,
+            addedApps: newApps,
+            totalApps: updatedApps.length,
+            paymentIntentId: paymentIntent.id,
+            amount: paymentIntent.amount
+          });
+        } catch (error) {
+          console.error('❌ Error processing app addition:', error);
+        }
+        break;
+      }
+      
       // 新フローの初回決済完了を確認
       const isNewFlowPayment = paymentIntent.metadata?.isNewFlow === 'true';
       
@@ -292,8 +339,9 @@ export async function POST(request: NextRequest) {
         });
 
         console.log('📄 Creating contract for user:', firebaseUserId);
-        // 契約情報を作成
-        await createContract({
+        
+        // 契約データを構築（undefinedを避ける）
+        const contractData: any = {
           userId: firebaseUserId,
           planId: planId,
           planName: planId === 'basic' ? '基本プラン' : planId,
@@ -305,12 +353,19 @@ export async function POST(request: NextRequest) {
           hasOpenAIProxy: hasOpenAIProxy === 'true',
           selectedApps: selectedApps ? selectedApps.split(',') : [],
           applicantType: (applicantType as 'individual' | 'corporate') || 'individual',
-          companyName: companyName || undefined,
           passwordSetupRequired: false, // 新規作成の場合はパスワード設定が不要
           customerEmail: customerEmail, // メールアドレスでの検索用
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
+        };
+
+        // companyNameがあるときのみ追加（undefinedを避ける）
+        if (companyName) {
+          contractData.companyName = companyName;
+        }
+
+        // 契約情報を作成
+        await createContract(contractData);
 
         console.log('🎉 Contract created successfully for user:', firebaseUserId);
       } catch (error) {

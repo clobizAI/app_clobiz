@@ -10,28 +10,30 @@ function AddAppSuccessContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get('session_id')
+  const paymentIntentId = searchParams.get('payment_intent_id')
+  const amount = searchParams.get('amount')
+  const apps = searchParams.get('apps')
   
-  const [sessionData, setSessionData] = useState<any>(null)
+  const [paymentData, setPaymentData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (sessionId) {
-      // セッション情報を設定（アプリ追加用）
+    if (paymentIntentId) {
+      // PaymentIntent情報を設定
       setTimeout(() => {
-        // とりあえずダミーデータを設定
-        // 実際のStripeセッションから取得する場合は、ここでAPIコールが必要
-        setSessionData({
-          id: sessionId,
+        setPaymentData({
+          id: paymentIntentId,
           payment_status: 'paid',
-          type: 'app_addition'
+          type: 'app_addition',
+          amount: amount,
+          addedApps: apps ? decodeURIComponent(apps).split(',') : []
         })
         setLoading(false)
-      }, 1000)
+      }, 500) // 短縮
     } else {
       setLoading(false)
     }
-  }, [sessionId])
+  }, [paymentIntentId, amount, apps])
 
   if (loading) {
     return (
@@ -44,7 +46,7 @@ function AddAppSuccessContent() {
     )
   }
 
-  if (!sessionId) {
+  if (!paymentIntentId) {
     return (
       <div className="success-container fade-in">
         <div className="success-header">
@@ -61,9 +63,9 @@ function AddAppSuccessContent() {
           }}>
             <span style={{ fontSize: '2rem', color: 'white' }}>❌</span>
           </div>
-          <h1 className="success-title">セッションが見つかりません</h1>
+          <h1 className="success-title">決済情報が見つかりません</h1>
           <p className="success-subtitle">
-            決済セッションが無効か、期限切れです。
+            決済情報が無効か、期限切れです。
           </p>
         </div>
 
@@ -97,7 +99,7 @@ function AddAppSuccessContent() {
           <div className="detail-item">
             <span className="detail-label">💳 決済状況</span>
             <span className="detail-value status-paid">
-              ✅ {sessionData?.payment_status === 'paid' ? '決済完了' : sessionData?.payment_status}
+              ✅ {paymentData?.payment_status === 'paid' ? '決済完了' : paymentData?.payment_status}
             </span>
           </div>
           <div className="detail-item">

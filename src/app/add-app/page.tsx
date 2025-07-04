@@ -146,11 +146,12 @@ export default function AddAppPage() {
       const data = await response.json()
       console.log('Response data:', data)
       
-      if (data.url) {
-        console.log('Redirecting to:', data.url)
-        window.location.href = data.url
+      if (data.status === 'success') {
+        console.log('Payment completed successfully:', data.paymentIntentId)
+        // 成功時は成功ページに遷移
+        router.push(`/add-app/success?payment_intent_id=${data.paymentIntentId}&amount=${data.amount}&apps=${encodeURIComponent(data.addedApps.join(','))}`)
       } else {
-        setMessage('決済URLが取得できませんでした。')
+        setMessage(data.error || '決済処理に失敗しました。')
       }
     } catch (error) {
       console.error('Checkout error:', error)

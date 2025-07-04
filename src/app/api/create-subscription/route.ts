@@ -128,14 +128,13 @@ export async function POST(request: NextRequest) {
 
     // Firestoreに契約データを保存
     try {
-      await createContract({
+      const contractData: any = {
         userId: userId,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         planId: planId,
         planName: planName,
         applicantType: applicantType as 'individual' | 'corporate',
-        companyName: companyName || undefined,
         customerEmail: customerEmail,
         hasOpenAIProxy: !!hasOpenAIProxy,
         selectedApps: selectedApps || [],
@@ -143,7 +142,14 @@ export async function POST(request: NextRequest) {
         startDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      // companyNameがあるときのみ追加（undefinedを避ける）
+      if (companyName) {
+        contractData.companyName = companyName;
+      }
+
+      await createContract(contractData);
 
       console.log('✅ Contract created in Firestore for user:', userId);
     } catch (error) {
