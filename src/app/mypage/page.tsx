@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Contract } from '@/types'
 import { businessApps, storagePlans } from '@/lib/stripe'
 import { useAuth } from '@/components/AuthProvider'
-import { getUserContractsByEmail } from '@/lib/firestore'
 
 export default function MyPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -14,17 +13,24 @@ export default function MyPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
+  // API経由で契約情報を取得
   const loadUserContracts = useCallback(async () => {
-    if (!user || !user.email) return
-
+    if (!user) return
     try {
       setLoading(true)
-      const userContracts = await getUserContractsByEmail(user.email)
-      
-      // 実際の契約データのみを表示
-      setContracts(userContracts)
+      const idToken = await user.getIdToken()
+      const res = await fetch('/api/get-contracts', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      })
+      if (!res.ok) throw new Error('契約情報の取得に失敗')
+      const data = await res.json()
+      setContracts(data.contracts || [])
     } catch (error) {
       console.error('Error loading contracts:', error)
+      setContracts([])
     } finally {
       setLoading(false)
     }

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { plans, businessApps, openaiProxyService } from '@/lib/stripe'
 import { ApplicationForm, Contract } from '@/types'
 import { useAuth } from '@/components/AuthProvider'
-import { getUserContractsByEmail } from '@/lib/firestore'
 import Link from 'next/link'
 
 export default function Home() {

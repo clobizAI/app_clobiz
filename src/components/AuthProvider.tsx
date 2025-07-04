@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { createUser, getUser } from '@/lib/firestore'
+import { auth } from '@/lib/firebase.client'
 
 interface AuthContextType {
   user: User | null
@@ -39,12 +38,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // プロフィールを更新
       await updateProfile(user, { displayName: name })
       
-      // Firestoreにユーザー情報を保存
-      await createUser(user.uid, {
-        email: user.email!,
-        name: name,
-        createdAt: new Date().toISOString()
+      // API経由でFirestoreにユーザー情報を保存
+      const idToken = await user.getIdToken()
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          email: user.email!,
+          name: name,
+          createdAt: new Date().toISOString()
+        })
       })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'ユーザー作成に失敗しました')
+      }
     } catch (error) {
       console.error('Sign up error:', error)
       throw error

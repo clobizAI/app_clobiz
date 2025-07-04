@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, storagePlans } from '@/lib/stripe';
 import { getContractById, updateContract } from '@/lib/firestore';
+import { verifyIdToken } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const { contractId, newStoragePlan, userEmail } = await request.json();
-
-    if (!contractId || !newStoragePlan || !userEmail) {
+    // AuthorizationヘッダーからIDトークンを取得
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: '契約ID、新しい容量プラン、ユーザーメールが必要です' },
+        { error: '認証情報がありません' },
+        { status: 401 }
+      );
+    }
+    const idToken = authHeader.replace('Bearer ', '').trim();
+    let decoded;
+    try {
+      decoded = await verifyIdToken(idToken);
+    } catch (err) {
+      return NextResponse.json(
+        { error: 'IDトークンが無効です' },
+        { status: 401 }
+      );
+    }
+    const uid = decoded.uid;
+
+    // クライアントからUIDやuserEmailは受け取らない
+    const { contractId, newStoragePlan } = await request.json();
+    if (!contractId || !newStoragePlan) {
+      return NextResponse.json(
+        { error: '契約IDと新しい容量プランが必要です' },
         { status: 400 }
       );
     }
@@ -19,6 +40,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '契約が見つかりません' },
         { status: 404 }
+      );
+    }
+
+    // 認可: UIDが契約のuserIdと一致するか
+    if (existingContract.userId !== uid) {
+      return NextResponse.json(
+        { error: 'この契約を操作する権限がありません' },
+        { status: 403 }
       );
     }
 
@@ -56,54 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Stripeサブスクリプションの更新
-    if (existingContract.stripeSubscriptionId) {
-      try {
-        console.log('Updating Stripe subscription:', existingContract.stripeSubscriptionId);
-        
-        // 既存のサブスクリプションを取得
-        const subscription = await stripe.subscriptions.retrieve(existingContract.stripeSubscriptionId);
-        
-        // 容量プランのアイテムを追加（5GB以外の場合）
-        if (selectedPlan.price > 0) {
-          const subscriptionItems = [];
-          
-          // 既存のアイテムを保持
-          for (const item of subscription.items.data) {
-            subscriptionItems.push({
-              id: item.id,
-              price: item.price.id,
-            });
-          }
-          
-          // 新しい容量プランのアイテムを追加
-          subscriptionItems.push({
-            price: selectedPlan.stripePriceId,
-            quantity: 1,
-          });
-          
-          // サブスクリプションを更新
-          await stripe.subscriptions.update(existingContract.stripeSubscriptionId, {
-            items: subscriptionItems,
-            metadata: {
-              ...subscription.metadata,
-              storageUpgrade: newStoragePlan,
-              storageUpgradeDate: new Date().toISOString(),
-            },
-          });
-          
-          console.log('Stripe subscription updated successfully');
-        }
-      } catch (stripeError) {
-        console.error('Stripe subscription update failed:', stripeError);
-        return NextResponse.json(
-          { error: 'サブスクリプションの更新に失敗しました' },
-          { status: 500 }
-        );
-      }
-    }
-
-    // 契約情報を更新
+    // 契約情報を更新（pendingStoragePlanのみ）
     await updateContract(contractId, {
       pendingStoragePlan: newStoragePlan,
       updatedAt: new Date().toISOString(),
@@ -112,12 +94,13 @@ export async function POST(request: NextRequest) {
     console.log('Storage upgrade request completed:', {
       contractId,
       newStoragePlan,
-      userEmail
+      userId: uid,
+      note: 'Stripe subscription will be updated on next billing cycle'
     });
 
     return NextResponse.json({
       success: true,
-      message: '容量変更申請が完了しました',
+      message: '容量変更申請が完了しました。翌月1日から新しい容量でご利用いただけます。',
       newStoragePlan: selectedPlan.name,
       effectiveDate: '翌月1日'
     });

@@ -1,11 +1,14 @@
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import '@/lib/firebase-admin'; // Initialize Firebase Admin SDK first
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { Contract, User } from '@/types';
+
+export const db = getFirestore();
+// 以降の関数はadmin SDK用に順次書き直す
 
 // ユーザー操作
 export const createUser = async (userId: string, userData: Omit<User, 'uid'>) => {
   try {
-    await setDoc(doc(db, 'users', userId), {
+    await db.collection('users').doc(userId).set({
       ...userData,
       uid: userId,
     });
@@ -17,8 +20,8 @@ export const createUser = async (userId: string, userData: Omit<User, 'uid'>) =>
 
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (userDoc.exists) {
       return userDoc.data() as User;
     }
     return null;
@@ -30,12 +33,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   try {
-    const q = query(
-      collection(db, 'users'),
-      where('email', '==', email)
-    );
-    
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await db.collection('users').where('email', '==', email).get();
     if (!querySnapshot.empty) {
       const userDoc = querySnapshot.docs[0];
       return userDoc.data() as User;
@@ -50,14 +48,12 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 // 契約操作
 export const createContract = async (contractData: Omit<Contract, 'id'>) => {
   try {
-    const contractsRef = collection(db, 'contracts');
-    const contractDoc = doc(contractsRef);
-    
-    await setDoc(contractDoc, {
+    const contractsRef = db.collection('contracts');
+    const contractDoc = contractsRef.doc();
+    await contractDoc.set({
       ...contractData,
       id: contractDoc.id,
     });
-    
     return contractDoc.id;
   } catch (error) {
     console.error('Error creating contract:', error);
@@ -67,7 +63,7 @@ export const createContract = async (contractData: Omit<Contract, 'id'>) => {
 
 export const updateContract = async (contractId: string, updates: Partial<Contract>) => {
   try {
-    await updateDoc(doc(db, 'contracts', contractId), {
+    await db.collection('contracts').doc(contractId).update({
       ...updates,
       updatedAt: new Date().toISOString(),
     });
@@ -79,7 +75,7 @@ export const updateContract = async (contractId: string, updates: Partial<Contra
 
 export const updateUser = async (userId: string, updates: Partial<User>) => {
   try {
-    await updateDoc(doc(db, 'users', userId), {
+    await db.collection('users').doc(userId).update({
       ...updates,
     });
   } catch (error) {
@@ -90,18 +86,11 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
 
 export const getUserContracts = async (userId: string): Promise<Contract[]> => {
   try {
-    const q = query(
-      collection(db, 'contracts'),
-      where('userId', '==', userId)
-    );
-    
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await db.collection('contracts').where('userId', '==', userId).get();
     const contracts: Contract[] = [];
-    
     querySnapshot.forEach((doc) => {
       contracts.push(doc.data() as Contract);
     });
-    
     return contracts;
   } catch (error) {
     console.error('Error getting user contracts:', error);
@@ -111,18 +100,11 @@ export const getUserContracts = async (userId: string): Promise<Contract[]> => {
 
 export const getUserContractsByEmail = async (email: string): Promise<Contract[]> => {
   try {
-    const q = query(
-      collection(db, 'contracts'),
-      where('customerEmail', '==', email)
-    );
-    
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await db.collection('contracts').where('customerEmail', '==', email).get();
     const contracts: Contract[] = [];
-    
     querySnapshot.forEach((doc) => {
       contracts.push(doc.data() as Contract);
     });
-    
     return contracts;
   } catch (error) {
     console.error('Error getting user contracts by email:', error);
@@ -132,8 +114,8 @@ export const getUserContractsByEmail = async (email: string): Promise<Contract[]
 
 export const getContractById = async (contractId: string): Promise<Contract | null> => {
   try {
-    const contractDoc = await getDoc(doc(db, 'contracts', contractId));
-    if (contractDoc.exists()) {
+    const contractDoc = await db.collection('contracts').doc(contractId).get();
+    if (contractDoc.exists) {
       return contractDoc.data() as Contract;
     }
     return null;
@@ -146,19 +128,14 @@ export const getContractById = async (contractId: string): Promise<Contract | nu
 // 容量プラン関連の操作
 export const getContractsPendingStorageUpgrade = async (): Promise<Contract[]> => {
   try {
-    const q = query(
-      collection(db, 'contracts'),
-      where('status', '==', 'active'),
-      where('pendingStoragePlan', '!=', null)
-    );
-    
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await db.collection('contracts')
+      .where('status', '==', 'active')
+      .where('pendingStoragePlan', '!=', null)
+      .get();
     const contracts: Contract[] = [];
-    
     querySnapshot.forEach((doc) => {
       contracts.push(doc.data() as Contract);
     });
-    
     return contracts;
   } catch (error) {
     console.error('Error getting contracts pending storage upgrade:', error);
@@ -172,18 +149,14 @@ export const applyPendingStorageUpgrade = async (contractId: string): Promise<vo
     if (!contract) {
       throw new Error('Contract not found');
     }
-    
     if (!contract.pendingStoragePlan) {
       throw new Error('No pending storage plan found');
     }
-    
-    // pendingStoragePlanをcurrentStoragePlanに適用
     await updateContract(contractId, {
       currentStoragePlan: contract.pendingStoragePlan,
-      pendingStoragePlan: undefined, // 申請中フラグをクリア
+      pendingStoragePlan: undefined,
       storageUpgradeAppliedDate: new Date().toISOString(),
     });
-    
     console.log('Storage upgrade applied successfully:', {
       contractId,
       newStoragePlan: contract.pendingStoragePlan
@@ -199,9 +172,7 @@ export const applyAllPendingStorageUpgrades = async (): Promise<{ success: numbe
     const pendingContracts = await getContractsPendingStorageUpgrade();
     let success = 0;
     let failed = 0;
-    
     console.log(`Processing ${pendingContracts.length} pending storage upgrades...`);
-    
     for (const contract of pendingContracts) {
       try {
         await applyPendingStorageUpgrade(contract.id);
@@ -211,9 +182,7 @@ export const applyAllPendingStorageUpgrades = async (): Promise<{ success: numbe
         failed++;
       }
     }
-    
     console.log(`Storage upgrade batch completed: ${success} success, ${failed} failed`);
-    
     return { success, failed };
   } catch (error) {
     console.error('Error applying all pending storage upgrades:', error);
@@ -227,16 +196,12 @@ export const cancelStorageUpgrade = async (contractId: string): Promise<void> =>
     if (!contract) {
       throw new Error('Contract not found');
     }
-    
     if (!contract.pendingStoragePlan) {
       throw new Error('No pending storage plan found');
     }
-    
-    // pendingStoragePlanをクリア
     await updateContract(contractId, {
       pendingStoragePlan: undefined,
     });
-    
     console.log('Storage upgrade cancelled successfully:', { contractId });
   } catch (error) {
     console.error('Error cancelling storage upgrade:', error);

@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, businessApps } from '@/lib/stripe';
 import { getContractById } from '@/lib/firestore';
+import { verifyIdToken } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const { contractId, selectedApps, userEmail } = await request.json();
+    // AuthorizationヘッダーからIDトークンを取得
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: '認証情報がありません' },
+        { status: 401 }
+      );
+    }
+    const idToken = authHeader.replace('Bearer ', '').trim();
+    let decoded;
+    try {
+      decoded = await verifyIdToken(idToken);
+    } catch (err) {
+      return NextResponse.json(
+        { error: 'IDトークンが無効です' },
+        { status: 401 }
+      );
+    }
+    const uid = decoded.uid;
+
+    const { contractId, selectedApps } = await request.json();
 
     if (!contractId || !selectedApps || !Array.isArray(selectedApps) || selectedApps.length === 0) {
       return NextResponse.json(
@@ -19,6 +40,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '契約が見つかりません' },
         { status: 404 }
+      );
+    }
+
+    // 認可: UIDが契約のuserIdと一致するか
+    if (existingContract.userId !== uid) {
+      return NextResponse.json(
+        { error: 'この契約を操作する権限がありません' },
+        { status: 403 }
       );
     }
 
@@ -53,11 +82,7 @@ export async function POST(request: NextRequest) {
     // 追加料金を計算（各アプリHK$400）
     const totalAddPrice = newApps.length * 400;
 
-
-
     // Stripe Checkoutセッションを作成
-
-    // ベースURLを環境変数から取得（必須）
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!baseUrl) {
       throw new Error('NEXT_PUBLIC_SITE_URL environment variable is required');
@@ -84,12 +109,13 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
-      customer_email: userEmail,
+      // customer_email: userEmail, // userEmailは使わない
       line_items: lineItems,
       metadata: {
         type: 'app_addition',
         contractId: contractId,
         addedApps: newApps.join(','),
+        userId: uid,
       },
       success_url: `${baseUrl}/add-app/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/add-app`,

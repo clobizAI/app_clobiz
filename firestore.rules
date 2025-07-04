@@ -2,62 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection
-    match /users/{userId} {
-      // ユーザーは自分の情報のみ読み書き可能
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Webhook経由での読み取りを許可（ユーザー検索用）
-      allow read: if true;
-      
-      // Webhook経由でのユーザー作成を許可
-      allow create: if true;
-      
-      // Webhook経由でのユーザー更新を許可
-      allow update: if true;
-      
-      // 管理者は全てのユーザー情報にアクセス可能（必要に応じて）
-      // allow read, write: if request.auth != null && 
-      //   request.auth.token.admin == true;
-    }
-    
-    // Contracts collection
-    match /contracts/{contractId} {
-      // ユーザーは自分のメールアドレスの契約情報のみ閲覧可能
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.auth.token.email == resource.data.customerEmail
-      );
-      
-      // メールバリデーションAPI用：サーバーサイドからの読み取りを許可
-      allow read: if true;
-      
-      // 契約の作成は認証済みユーザーまたはWebhook経由での作成を許可
-      allow create: if true;
-      
-      // 契約の更新は本人または管理者のみ
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.auth.token.email == resource.data.customerEmail ||
-        request.auth.token.admin == true
-      );
-      
-      // 削除は管理者のみ
-      allow delete: if request.auth != null && 
-        request.auth.token.admin == true;
-    }
-    
-    // Collection group queries (email-based contract search)
-    match /{path=**}/contracts/{contractId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.auth.token.email == resource.data.customerEmail
-      );
-    }
-    
-    // その他のコレクションはデフォルトでアクセス拒否
     match /{document=**} {
       allow read, write: if false;
     }
   }
-} 
+}

@@ -117,3 +117,5 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+clobiz-project-firebase-adminsdk-fbsvc-483f5d822c.json

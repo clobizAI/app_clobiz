@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { updateUser, getUserByEmail, createUser } from '@/lib/firestore'
+import { auth } from '@/lib/firebase.client'
 import { Suspense } from 'react'
 
 function SetupPasswordContent() {
@@ -62,16 +61,30 @@ function SetupPasswordContent() {
         console.log('✅ Profile updated with display name:', name)
       }
 
-      // Firestoreのユーザー情報を作成
+      // API経由でFirestoreのユーザー情報を作成
       try {
-        await createUser(user.uid, {
-          email: email,
-          name: name,
-          applicantType: applicantType as 'individual' | 'corporate',
-          companyName: companyName || undefined,
-          passwordSetupRequired: false,
-          createdAt: new Date().toISOString()
+        const idToken = await user.getIdToken()
+        const response = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            email: email,
+            name: name,
+            applicantType: applicantType as 'individual' | 'corporate',
+            companyName: companyName || undefined,
+            passwordSetupRequired: false,
+            createdAt: new Date().toISOString()
+          })
         })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'ユーザー作成に失敗しました')
+        }
+        
         console.log('✅ Firestore user record created:', user.uid)
       } catch (error) {
         console.error('Failed to create user record:', error)

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { storagePlans } from '@/lib/stripe'
 import { useAuth } from '@/components/AuthProvider'
-import { getUserContractsByEmail } from '@/lib/firestore'
 import { Contract } from '@/types'
 import Link from 'next/link'
 
@@ -19,12 +18,20 @@ export default function StorageUpgradePage() {
 
   // ユーザーの契約情報を取得
   const loadUserContracts = useCallback(async () => {
-    if (!user || !user.email) return
+    if (!user) return
 
     try {
       setLoading(true)
-      const userContracts = await getUserContractsByEmail(user.email)
-      setContracts(userContracts)
+      const idToken = await user.getIdToken()
+      const res = await fetch('/api/get-contracts', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      })
+      if (!res.ok) throw new Error('契約情報の取得に失敗')
+      const data = await res.json()
+      setContracts(data.contracts || [])
     } catch (error) {
       console.error('Error loading contracts:', error)
     } finally {
@@ -78,15 +85,16 @@ export default function StorageUpgradePage() {
         newStoragePlan: selectedStoragePlan
       })
 
+      const idToken = await user.getIdToken()
       const response = await fetch('/api/storage-upgrade', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
           contractId: activeContract.id,
-          newStoragePlan: selectedStoragePlan,
-          userEmail: user.email
+          newStoragePlan: selectedStoragePlan
         }),
       })
 
