@@ -1,12 +1,21 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { readFileSync } from 'fs';
 
 if (!getApps().length) {
-  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS!;
-  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error('Firebase Admin 環境変数が不足しています');
+  }
+
   initializeApp({
-    credential: cert(serviceAccount),
+    credential: cert({
+      projectId,
+      clientEmail,
+      privateKey,
+    }),
   });
 }
 
