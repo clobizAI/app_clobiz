@@ -1,5 +1,5 @@
 
-## 第7章：フロントエンドデザインガイドライン
+## フロントエンドデザインガイドライン
 
 ### 7.1 デザインシステム統一方針
 
@@ -120,5 +120,53 @@
 **解決**: add-appページをstorageページのパターンに統一
 - 申請ボタン: `form-group`内で中央配置に変更
 - 戻るボタン: `actions-container`内に移動
+
+### 7.6 タブ機能統一ルール
+
+#### デザイン原則
+- **控えめアプローチ**: 金額を大きく表示せず、興味のある人だけがタブでアクセス
+- **統一されたタブUI**: 全タブで同じデザインパターンを使用
+- **レスポンシブ対応**: モバイルでも使いやすいタブ設計
+
+#### 必須構造
+```tsx
+<div className="billing-card">
+  <h2 className="billing-card-title">💳 決済情報</h2>
+  <div className="tab-container">
+    <div className="tab-nav">
+      <button className={`tab-button ${activeTab === 'overview' ? 'tab-button-active' : ''}`}>
+        📊 概要
+      </button>
+      <button className={`tab-button ${activeTab === 'billing' ? 'tab-button-active' : ''}`}>
+        💰 課金予定
+      </button>
+      <button className={`tab-button ${activeTab === 'history' ? 'tab-button-active' : ''}`}>
+        📋 支払履歴
+      </button>
+      <button className={`tab-button ${activeTab === 'cards' ? 'tab-button-active' : ''}`}>
+        💳 カード管理
+      </button>
+    </div>
+    <div className="tab-content">
+      {/* タブごとの内容 */}
+    </div>
+  </div>
+</div>
+```
+
+#### 情報表示の優先順位
+1. **概要タブ**: 最小限の情報、アクセス頻度が高い
+2. **課金予定タブ**: Firestoreから取得、控えめに表示
+3. **支払履歴タブ**: Stripeから取得、テーブル表示
+4. **カード管理タブ**: Stripeポータルへのリンク
+
+#### 禁止事項
+- 金額を大きく表示すること
+- 不必要に目立つ課金情報の表示
+- タブ構造を無視した独自実装
+
+#### 対象ページ
+- ✅ マイページ (`mypage/page.tsx`)
+- 今後追加される決済関連機能
 
 ---

@@ -242,7 +242,7 @@ export default function Home() {
                   新しいAI業務アプリの追加は<br />マイページから申請できます
                 </p>
                 <Link 
-                  href="/mypage" 
+                  href="/add-app" 
                   className="btn btn-secondary"
                   style={{ width: '100%', fontSize: '0.875rem' }}
                 >
